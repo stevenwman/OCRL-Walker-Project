@@ -68,4 +68,3 @@ random_seed = 3
 avg_err, avg_step_err, avg_error, avgTime, step_err_kf = runMultipleKF(dynamics,resets,guards,W,V,C,xmean,Σ,mode0,t,dt;num_iters=iters,randseed=random_seed);
 
 display(plot(avg_step_err))
-# hi
