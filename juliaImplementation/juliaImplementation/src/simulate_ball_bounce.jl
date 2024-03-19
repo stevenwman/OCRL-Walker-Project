@@ -1,6 +1,12 @@
 @show joinpath(@__DIR__,"..")
-import Pkg; Pkg.activate(joinpath(@__DIR__,"..")); 
+import Pkg; Pkg.activate(joinpath(@__DIR__,"..", "..")); 
+Pkg.update()
 Pkg.instantiate()
+
+Pkg.add("ForwardDiff")
+Pkg.add("Plots")
+Pkg.add("PlotlyJS")
+Pkg.add("DifferentialEquations")
 
 using ForwardDiff
 using LinearAlgebra

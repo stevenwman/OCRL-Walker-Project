@@ -42,6 +42,7 @@ function dynamic_step(x,mode,dynamics,resets,guards, t, dt, p)
         if abs(curr_t - (t+dt)) > 1e-16
             guardresults = [f(curr_state,t) for f in guards[curr_mode]]
             new_mode = findfirst(abs.(guardresults) .< 1e-8)
+            println("OMG MODE SWITCHHHH")
             impact_state = deepcopy(curr_state)
             curr_state = resets[curr_mode][new_mode](curr_state)
             curr_mode = new_mode
