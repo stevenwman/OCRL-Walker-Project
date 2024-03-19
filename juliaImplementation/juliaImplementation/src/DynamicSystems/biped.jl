@@ -174,9 +174,11 @@ end
 
 function kneeReset(x)
     q⁻, q̇⁻ = x[1:3], x[4:6]
-    Q⁺, Q⁻ = Q⁺knee(q), Q⁻knee(q)
+    Q⁺, Q⁻ = Q⁺knee(q⁻), Q⁻knee(q⁻)
     q⁺ = q⁻
     q̇⁺ = -Q⁺\(Q⁻*q̇⁻)
+    @show q⁺
+    @show q̇⁺
     return [q⁺ q̇⁺]
 end
 
@@ -195,7 +197,10 @@ end
 
 function kneeGuard(x,t)
     q, q̇ = x[1:3], x[4:6]
-    return 1
+    q1, q2, q3 = q
+    q̇1, q̇2, q̇3 = q̇
+    kneeStrikeCheck = (q̇2 == q̇3) && (q2 == q3)
+    return kneeStrikeCheck
 end
 
 function heelGuard(x,t)
