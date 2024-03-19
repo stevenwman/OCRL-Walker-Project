@@ -69,7 +69,7 @@ end
 
 function B_matrix_2link(q, q̇)
     L, a1, b1, a2, b2, mH, mt, ms, g = p
-    q1, q2, q3 = q
+    q1, q2 = q
     lt = a2 + b2
     ls = a1 + b1
     h = -(mt*b2 + ms*(lt+b1))*L*sin(q1-q2)
@@ -175,10 +175,10 @@ end
 function kneeReset(x)
     q⁻, q̇⁻ = x[1:3], x[4:6]
     Q⁺, Q⁻ = Q⁺knee(q⁻), Q⁻knee(q⁻)
-    q⁺ = q⁻
+    q⁺ = q⁻[1:2]
     q̇⁺ = -Q⁺\(Q⁻*q̇⁻)
-    @show q⁺
-    @show q̇⁺
+    # @show q⁺
+    # @show q̇⁺
     return [q⁺ q̇⁺]
 end
 
