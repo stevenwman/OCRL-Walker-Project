@@ -63,7 +63,8 @@ function sim_system(x,mode,dynamics,resets,guards,W,V,C,t,dt)
     num_impacts = [0 for i = 1:size(times,1)]
     noise = [x*0 for i = 1:size(times,1)-1]
     for i = 2:size(times,1)
-        noise[i-1] = sqrt(W)*randn(size(states[1])) #gaussian
+        # noise[i-1] = sqrt(W)*randn(size(states[1])) #gaussian
+        # noise[i-1] = 0
         states[i], modes[i],impact_states[i-1],_ = dynamic_step(states[i-1],modes[i-1],dynamics,resets,guards,times[i-1],dt,noise[i-1])
         # measurements[i-1] = C*states[i] + sqrt(V)*randn(size(measurements[1])) #gaussian
         if !isnan(impact_states[i-1][1])

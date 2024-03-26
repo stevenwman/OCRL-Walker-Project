@@ -1,17 +1,16 @@
 ###### 2-D Biped Walker Dynamics
-
 # Dynamics equation: H ̈q + B ̇q + G = 0
 
-# p holds parameters
-
+# p holds system parameters
 p = (L = 1, a1 = 0.375, b1 = 0.125, a2 = 0.175, b2 = 0.375, mH = 0.5, mt = 0.5, ms = 0.05, g = 9.81)
 
+# maps coords to joint positions
 function q2joints(q)
     q1, q2, q3 = q
     j1 = [0,0]
-    j2 = p.L*[cos(q1+π/2), sin(q1+π/2)]
-    j3 = j2 + (p.L - p.b1 - p.a1)*[cos(-π/2-q2), sin(-π/2-q2)]
-    j4 = j3 + (p.b1 + p.a1)*[cos(-π/2-q3), sin(-π/2-q3)]
+    j2 = p.L*[cos(q1 + π/2), sin(q1 + π/2)]
+    j3 = j2 + (p.L - p.b1 - p.a1)*[cos(-π/2 + q2), sin(-π/2 + q2)]
+    j4 = j3 + (p.b1 + p.a1)*[cos(-π/2 + q3), sin(-π/2 + q3)]
     joints = [j1, j2, j3, j4]
     return joints
 end
@@ -118,7 +117,8 @@ function biped_dynamics_2link(x, u, t)
     B = B_matrix_2link(q[1:2], q̇[1:2])
     G = G_matrix_2link(q[1:2])
     q̈ = -H\(B + G)
-    q̈ = [q̈; 0]
+    q̈ = [q̈; q̈[2]]
+    q̇[3] = q̇[2]
     ẋ = [q̇; q̈]
     return ẋ
 end
@@ -187,7 +187,7 @@ function kneeReset(x)
     q⁻, q̇⁻ = x[1:3], x[4:6]
     Q⁺, Q⁻ = Q⁺knee(q⁻), Q⁻knee(q⁻)
     q⁺ = q⁻
-    q̇⁺ = -Q⁺\(Q⁻*q̇⁻)
+    q̇⁺ = Q⁺\(Q⁻*q̇⁻)
     q̇⁺ = [q̇⁺; q̇⁺[2]]
     return [q⁺;q̇⁺]
 end
@@ -209,7 +209,9 @@ function kneeGuard(x,t)
     q, q̇ = x[1:3], x[4:6]
     q1, q2, q3 = q
     q̇1, q̇2, q̇3 = q̇
-    kneeStrikeCheck = (q̇2 == q̇3) && (q2 == q3)
+    kneeStrikeCheck = (q3 < q2)
+    # @show q2, q3
+    # kneeStrikeCheck = (q3 >= q2)
     return kneeStrikeCheck
 end
 
