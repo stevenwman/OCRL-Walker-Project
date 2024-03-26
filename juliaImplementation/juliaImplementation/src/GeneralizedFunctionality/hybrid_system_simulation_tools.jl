@@ -44,6 +44,10 @@ function dynamic_step(x,mode,dynamics,resets,guards, t, dt, p)
             new_mode = findfirst(abs.(guardresults) .< 1e-8)
             println("OMG MODE SWITCHHHH")
             impact_state = deepcopy(curr_state)
+            println(curr_mode)
+            println(new_mode)
+            println(curr_state)
+            println(curr_t)
             curr_state = resets[curr_mode][new_mode](curr_state)
             curr_mode = new_mode
             impact_time = curr_t

@@ -2,6 +2,21 @@
 ## Dynamics functions
 # refer to thesis (https://groups.csail.mit.edu/robotics-center/public_papers/Hsu07.pdf)
 
+
+# maps coords to joint positions
+
+function q2joints(q)
+    params = set_params()
+    L, a1, b1, a2, b2, mh, mt, ms, g = params[:L], params[:a1], params[:b1], params[:a2], params[:b2], params[:mh], params[:mt], params[:ms], params[:g]
+    q1, q2, q3 = q
+    j1 = [0,0]
+    j2 = L*[cos(q1 + π/2), sin(q1 + π/2)]
+    j3 = j2 + (L - b1 - a1)*[cos(-π/2 + q2), sin(-π/2 + q2)]
+    j4 = j3 + (b1 + a1)*[cos(-π/2 + q3), sin(-π/2 + q3)]
+    joints = [j1, j2, j3, j4]
+    return joints
+end
+
 function unlocked_dynamics(state, p, t)
     params = set_params()
     L, a1, b1, a2, b2, mh, mt, ms, g = params[:L], params[:a1], params[:b1], params[:a2], params[:b2], params[:mh], params[:mt], params[:ms], params[:g]
@@ -157,24 +172,15 @@ function heelstrike_reset(x)
     Q_plus = [Q11_plus Q12_plus; Q21_plus Q22_plus]
     Q_minus = [Q11_minus Q12_minus; Q21_minus Q22_minus]
 
-    q_plus = q_minus
+    q_plus = [0 1; 1 0; 1 0] * q_minus
+    # q_plus = [1 0; 0 1; 0 1] * q_minus
+
     dq_plus = Q_plus \ (Q_minus * q_minus)
     dq_plus = [dq_plus..., dq_plus[2]]
 
     x_plus = [q_plus..., dq_plus...]
 
-    xplus_plus = deepcopy(x_plus)
-
-    xplus[1] = x_plus[2]
-    xplus[2] = x_plus[1]
-    xplus[3] = x_plus[1]
-
-    xplus[4] = x_plus[5]
-    xplus[5] = x_plus[4]
-    xplus[6] = x_plus[4]
-
-
-    return xplus_plus
+    return x_plus
 end
 
 function idreset(x)
@@ -204,10 +210,14 @@ function heelstrike_guard(x, t)
     q2 = x[2]
 
     # return (q2 + gamma)
-    return gamma + (q1 - q2)/2
+    # return q1 + q2
+    return gamma + (q1 + q2)/2
 end
 
 function idguard(x,t)
+    # xplus = deepcopy(x)
+    
+    # return xplus
     return 1
 end
 
@@ -223,6 +233,6 @@ function set_params()
         :mt => 0.5,    
         :ms => 0.05,   
         :g => 9.81,    
-        :gamma => 0.05
+        :gamma => 0.0504
     )
 end
