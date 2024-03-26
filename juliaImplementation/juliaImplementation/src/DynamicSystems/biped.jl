@@ -6,6 +6,16 @@
 
 p = (L = 1, a1 = 0.375, b1 = 0.125, a2 = 0.175, b2 = 0.375, mH = 0.5, mt = 0.5, ms = 0.05, g = 9.81)
 
+function q2joints(q)
+    q1, q2, q3 = q
+    j1 = [0,0]
+    j2 = p.L*[cos(q1+π/2), sin(q1+π/2)]
+    j3 = j2 + (p.L - p.b1 - p.a1)*[cos(-π/2-q2), sin(-π/2-q2)]
+    j4 = j3 + (p.b1 + p.a1)*[cos(-π/2-q3), sin(-π/2-q3)]
+    joints = [j1, j2, j3, j4]
+    return joints
+end
+
 function H_matrix_3link(q)
     L, a1, b1, a2, b2, mH, mt, ms, g = p
     lt = a2 + b2
@@ -102,12 +112,13 @@ function biped_dynamics_3link(x, u, t)
 end
 
 function biped_dynamics_2link(x, u, t)
-    q = x[1:2]
-    q̇ = x[3:4]
-    H = H_matrix_2link(q)
-    B = B_matrix_2link(q, q̇)
-    G = G_matrix_2link(q)
+    q = x[1:3]
+    q̇ = x[4:6]
+    H = H_matrix_2link(q[1:2])
+    B = B_matrix_2link(q[1:2], q̇[1:2])
+    G = G_matrix_2link(q[1:2])
     q̈ = -H\(B + G)
+    q̈ = [q̈; 0]
     ẋ = [q̇; q̈]
     return ẋ
 end
@@ -175,19 +186,18 @@ end
 function kneeReset(x)
     q⁻, q̇⁻ = x[1:3], x[4:6]
     Q⁺, Q⁻ = Q⁺knee(q⁻), Q⁻knee(q⁻)
-    q⁺ = q⁻[1:2]
+    q⁺ = q⁻
     q̇⁺ = -Q⁺\(Q⁻*q̇⁻)
-    # @show q⁺
-    # @show q̇⁺
-    return [q⁺ q̇⁺]
+    q̇⁺ = [q̇⁺; q̇⁺[2]]
+    return [q⁺;q̇⁺]
 end
 
 function heelReset(x)
     q⁻, q̇⁻ = x[1:3], x[4:6]
     Q⁺, Q⁻ = Q⁺heel(q⁻), Q⁻heel(q⁻)
-    q⁺ = [0 1; 1 0; 1 0] * q⁻
+    q⁺ = [0 1; 1 0; 1 0] * q⁻[1:2]
     q̇⁺ = -Q⁺\(Q⁻*q̇⁻)
-    return [q⁺ q̇⁺]
+    return [q⁺;q̇⁺]
 end
 
 function idReset(x)
