@@ -2,7 +2,7 @@
 # Dynamics equation: H ̈q + B ̇q + G = 0
 
 # p holds system parameters
-p = (L = 1, a1 = 0.375, b1 = 0.125, a2 = 0.175, b2 = 0.375, mH = 0.5, mt = 0.5, ms = 0.05, g = 9.81)
+# p = (L = 1, a1 = 0.375, b1 = 0.125, a2 = 0.175, b2 = 0.375, mH = 0.5, mt = 0.5, ms = 0.05, g = 9.81, slope = 0.06)
 
 # maps coords to joint positions
 function q2joints(q)
@@ -100,8 +100,7 @@ function G_matrix_2link(q)
 end
 
 function biped_dynamics_3link(x, u, t)
-    q = x[1:3]
-    q̇ = x[4:6]
+    q, q̇ = x[1:3], x[4:6]
     H = H_matrix_3link(q)
     B = B_matrix_3link(q, q̇)
     G = G_matrix_3link(q)
@@ -111,13 +110,13 @@ function biped_dynamics_3link(x, u, t)
 end
 
 function biped_dynamics_2link(x, u, t)
-    q = x[1:3]
-    q̇ = x[4:6]
+    q, q̇ = x[1:3], x[4:6]
     H = H_matrix_2link(q[1:2])
     B = B_matrix_2link(q[1:2], q̇[1:2])
     G = G_matrix_2link(q[1:2])
     q̈ = -H\(B + G)
-    q̈ = [q̈; q̈[2]]
+    # q̈ = [q̈; q̈[2]]
+    q̈ = [q̈; 0]
     q̇[3] = q̇[2]
     ẋ = [q̇; q̈]
     return ẋ
@@ -128,9 +127,7 @@ function Q⁺knee(q)
     q1, q2, q3 = q
     lt = a2 + b2
     ls = a1 + b1
-    α = cos(q1-q2)
-    β = cos(q1-q3)
-    γ = cos(q2-q3)
+    α, β, γ  = cos(q1-q2), cos(q1-q3), cos(q2-q3)
     Q21 = -(ms*(b1+lt)+mt*b2)*L*cos(α)
     Q22 = mt*b2^2 + ms*(b1+lt)^2
     Q11 = Q21 + mt*(ls+a2)^2 + (mH+ms+mt)*L^2 + ms*a1^2
@@ -144,9 +141,7 @@ function Q⁻knee(q)
     q1, q2, q3 = q
     lt = a2 + b2
     ls = a1 + b1
-    α = cos(q1-q2)
-    β = cos(q1-q3)
-    γ = cos(q2-q3)
+    α, β, γ  = cos(q1-q2), cos(q1-q3), cos(q2-q3)
     Q11 = -(ms*lt+mt*b2)*L*cos(α) - ms*b1*L*cos(β) + (mt+ms+mH)*L^2 + ms*a1^2 + mt*(ls+a2)^2
     Q12 = -(ms*lt+mt*b2)*L*cos(α) + ms*b1*lt*cos(γ) + mt*b2^2 + ms*lt^2
     Q13 = -ms*b1*L*cos(β) + ms*b1*lt*cos(γ) + ms*b1^2
@@ -196,7 +191,9 @@ function heelReset(x)
     q⁻, q̇⁻ = x[1:3], x[4:6]
     Q⁺, Q⁻ = Q⁺heel(q⁻), Q⁻heel(q⁻)
     q⁺ = [0 1; 1 0; 1 0] * q⁻[1:2]
-    q̇⁺ = -Q⁺\(Q⁻*q̇⁻)
+    q̇⁺ = Q⁺\(Q⁻*q̇⁻[1:2])
+    q̇⁺ = [q̇⁺; q̇⁺[2]]
+    q̇⁺[2] = q̇⁺[3] = 0
     return [q⁺;q̇⁺]
 end
 
@@ -208,15 +205,16 @@ end
 function kneeGuard(x,t)
     q, q̇ = x[1:3], x[4:6]
     q1, q2, q3 = q
-    q̇1, q̇2, q̇3 = q̇
     kneeStrikeCheck = (q3 < q2)
-    # @show q2, q3
-    # kneeStrikeCheck = (q3 >= q2)
     return kneeStrikeCheck
 end
 
 function heelGuard(x,t)
-    return 1
+    L, a1, b1, a2, b2, mH, mt, ms, g, slope = p  
+    q, q̇ = x[1:3], x[4:6]
+    q1, q2, q3 = q
+    heelStrikeCheck = slope + (q1 + q2)/2
+    return heelStrikeCheck
 end
 
 function idGuard(x,t)
