@@ -5,12 +5,12 @@
 # p = (L = 1, a1 = 0.375, b1 = 0.125, a2 = 0.175, b2 = 0.375, mH = 0.5, mt = 0.5, ms = 0.05, g = 9.81, slope = 0.06)
 
 # maps coords to joint positions
-function q2joints(q)
+function q2joints(q, j1=[0,0])
+    L, a1, b1, a2, b2, mH, mt, ms, g = p
     q1, q2, q3 = q
-    j1 = [0,0]
-    j2 = p.L*[cos(q1 + π/2), sin(q1 + π/2)]
-    j3 = j2 + (p.L - p.b1 - p.a1)*[cos(-π/2 + q2), sin(-π/2 + q2)]
-    j4 = j3 + (p.b1 + p.a1)*[cos(-π/2 + q3), sin(-π/2 + q3)]
+    j2 = j1 + L*[cos(q1 + π/2), sin(q1 + π/2)]
+    j3 = j2 + (L - b1 - a1)*[cos(-π/2 + q2), sin(-π/2 + q2)]
+    j4 = j3 + (b1 + a1)*[cos(-π/2 + q3), sin(-π/2 + q3)]
     joints = [j1, j2, j3, j4]
     return joints
 end
