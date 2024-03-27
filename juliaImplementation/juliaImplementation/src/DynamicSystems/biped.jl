@@ -40,7 +40,7 @@ function B_matrix_3link(q, q̇)
     h122 = -(mt*b2 + ms*lt)*L*sin(q1-q2)
     h133 = -ms*b1*L*sin(q1-q3)
     h211 = -h122
-    h233 = ms*lt*b1*sin(q3-q2)
+    h233 = -ms*lt*b1*sin(q3-q2)
     h311 = -h133
     h322 = -h233
     B = [   0 h122 h133; 
@@ -220,32 +220,3 @@ end
 function idGuard(x,t)
     return 1
 end
-
-# ###### 2-D Bouncing Ball Dynamics
-# ## Dynamics function
-# function balldynamics(x,p,t)
-#     dx = [ x[3] + p[1], x[4] + p[2], 0 + p[3], -9.8 + p[4] ]
-# end
-
-# # Reset Functions
-# function groundreset(x)
-#     xplus = deepcopy(x)
-#     xplus[4] = -0.8*x[4]
-#     return xplus
-# end
-
-# function airreset(x)
-#     xplus = deepcopy(x)
-#     return xplus
-# end
-
-# # Guard Functions - identity guard exists only
-# # to never trigger & act as a placeholder for
-# # unreachable transitions
-
-# function groundguard(x,t)
-#     return x[2]
-# end
-# function airguard(x,t)
-#     return x[4]
-# end
