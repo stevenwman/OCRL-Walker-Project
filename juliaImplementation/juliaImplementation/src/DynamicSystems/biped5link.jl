@@ -1,18 +1,34 @@
 # 5-link biped model in 2D, adapted from https://web.eecs.umich.edu/~grizzle/biped_book_web/
 # dynamics equation: D(q)q'' + C(q, q') + G(q) = B*u
 
-
-# confusing notation (pg 177, pg 465): 
-# MZ = p^M 
+# The equations are extracted from MATALB script and do NOT match with Appendix E of the book
+# Confusing notation (pg 177 → pg 465): 
+# MZ... = p^M...
 # MYtorso = MZtorso
-# XX = I 
+# XX... = I... 
 
-p = (g=9.81, 
-     Ltorso=0.63, Lfem=0.4, Ltib=0.4,
-     Mtorso=12, Mfem=6.8, Mtib=3.2,
-     MYtorso=0.24, MZtorso=0.24, 
-     MZfem=0.11, MZtib=0.24, 
-     XX_torso=0.63, XX_fem=1.33, XX_tib=0.2)
+# p = (g=9.81, 
+#      L_torso=0.63, L_fem=0.4, L_tib=0.4,
+#      M_torso=12, M_fem=6.8, M_tib=3.2,
+#      MY_torso=0.24, MZ_torso=0.24, 
+#      MZ_fem=0.11, MZ_tib=0.24, 
+#      XX_torso=0.63, XX_fem=1.33, XX_tib=0.2)
+
+function kinematics(q)
+    q_torso, q_fem1, q_fem2, q_tib1, q_tib2 = q
+    pos = (p_hip  = L_fem*[sin(q_fem1), -cos(q_fem1)] + L_tib*[sin(q_tib1), -cos(q_tib1)], 
+           p_knee1 = p_hip + L_fem*[-sin(q_fem1), cos(q_fem1)],
+           p_knee2 = p_hip + L_fem*[-sin(q_fem2), cos(q_fem2)],
+           p_torso = p_hip	+ 1/M_torso*[-sin(q_torso)*MZ_torso - cos(q_torso)*MY_torso,
+	                                     cos(q_torso)*MZ_torso + sin(q_torso)*MY_torso],
+           p_fem1  = p_hip + MZ_fem/M_fem*[-sin(q_fem1), cos(q_fem1)],
+           p_fem2  = p_hip + MZ_fem/M_fem*[-sin(q_fem2), cos(q_fem2)],
+           p_tib1  = p_knee1 + MZ_tib/M_tib*[-sin(q_tib1), cos(q_tib1)],
+           p_tib2  = p_knee2 + MZ_tib/M_tib*[-sin(q_tib2), cos(q_tib2)],
+           p_foot1 = p_knee1 + L_tib*[-sin(q_tib1), cos(q_tib1)],
+           p_foot2 = p_knee2 + L_tib*[-sin(q_tib2), cos(q_tib2)])
+    return pos
+end
 
 function D_matrix(q)
     D = zeros(5,5)
@@ -164,7 +180,7 @@ function G_vector(q)
     return G
 end
   
-function dynamics(x, u, t)
+function biped_dynamics_5link(x, u, t)
     q, dq = x[1:5], x[6:10]
     D = D_matrix(q)
     C = C_matrix(q, dq)
