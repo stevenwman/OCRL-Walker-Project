@@ -192,3 +192,12 @@ function biped_dynamics_5link(x, u, t)
     ddq = D \ (B*u - C*dq - G)
     return [dq; ddq]
 end
+
+function idReset(x)
+    xplus = deepcopy(x)
+    return xplus
+end
+   
+function idGuard(x,t)
+    return 1
+end
