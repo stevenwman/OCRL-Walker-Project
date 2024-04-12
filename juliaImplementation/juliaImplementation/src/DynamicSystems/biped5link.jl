@@ -1,203 +1,82 @@
 # 5-link biped model in 2D, adapted from https://web.eecs.umich.edu/~grizzle/biped_book_web/
 # dynamics equation: D(q)q'' + C(q, q') + G(q) = B*u
 
-# The equations are extracted from MATALB script and do NOT match with Appendix E of the book
-# Confusing notation (pg 177 → pg 465): 
-# MZ... = p^M...
-# MYtorso = MZtorso
-# XX... = I... 
+p = (m1 = 1,  m2 = 1,  m3 = 1,  m4 = 1,  m5 = 1,  m6 = 1,
+		 l12 = 1, l23 = 1, l34 = 1, l45 = 1, l36 = 1, g = 9.81)
 
-# p = (g=9.81, 
-#      L_torso=0.63, L_fem=0.4, L_tib=0.4,
-#      M_torso=12, M_fem=6.8, M_tib=3.2,
-#      MY_torso=0.24, MZ_torso=0.24, 
-#      MZ_fem=0.11, MZ_tib=0.24, 
-#      XX_torso=0.63, XX_fem=1.33, XX_tib=0.2)
+function M_matrix(q, params)
+	m1, m2, m3, m4, m5, m6, l12, l23, l34, l45, l36, g = params
+	x, y, t1, t2, t3, t4, t5 = q
 
-function kinematics(q)
-    q_torso, q_fem1, q_fem2, q_tib1, q_tib2 = q
-    p_hip  = p.L_fem*[sin(q_fem1), -cos(q_fem1)] + p.L_tib*[sin(q_tib1), -cos(q_tib1)]
-    p_knee1 = p_hip + p.L_fem*[-sin(q_fem1), cos(q_fem1)]
-    p_knee2 = p_hip + p.L_fem*[-sin(q_fem2), cos(q_fem2)]
-    p_torso = p_hip	+ 1/p.M_torso*[-sin(q_torso)*p.MZ_torso - cos(q_torso)*p.MY_torso
-                                          cos(q_torso)*p.MZ_torso + sin(q_torso)*p.MY_torso]
-    p_fem1  = p_hip + p.MZ_fem/p.M_fem*[-sin(q_fem1), cos(q_fem1)]
-    p_fem2  = p_hip + p.MZ_fem/p.M_fem*[-sin(q_fem2), cos(q_fem2)]
-    p_tib1  = p_knee1 + p.MZ_tib/p.M_tib*[-sin(q_tib1), cos(q_tib1)]
-    p_tib2  = p_knee2 + p.MZ_tib/p.M_tib*[-sin(q_tib2), cos(q_tib2)]
-    p_foot1 = p_knee1 + p.L_tib*[-sin(q_tib1), cos(q_tib1)]
-    p_foot2 = p_knee2 + p.L_tib*[-sin(q_tib2), cos(q_tib2)]
-    pos = [p_hip, p_knee1, p_knee2, p_torso, p_fem1, p_fem2, p_tib1, p_tib2, p_foot1, p_foot2]
-    return pos
+	m11 = - m1 - m2 - m3 - m4 - m5 - m6
+	m12 = 0 
+	m13 = l12*m1*sin(t1) + l12*m6*sin(t1)
+	m14 = l23*m1*sin(t2) + l23*m2*sin(t2) + l23*m6*sin(t2)
+	m15 = l36*m6*sin(t3)
+	m16 = l34*m4*sin(t4) + l34*m5*sin(t4)
+	m17 = l45*m5*sin(t5)
+
+	m22 = - m1 - m2 - m3 - m4 - m5 - m6
+	m23 = - l12*m1*cos(t1) - l12*m6*cos(t1)
+	m24 = - l23*m1*cos(t2) - l23*m2*cos(t2) - l23*m6*cos(t2)
+	m25 = -l36*m6*cos(t3)
+	m26 = - l34*m4*cos(t4) - l34*m5*cos(t4)
+	m27 = -l45*m5*cos(t5)
+
+	m33 = - (m1*(2*l12^2*cos(t1)^2 + 2*l12^2*sin(t1)^2))/2 - (m6*(2*l12^2*cos(t1)^2 + 2*l12^2*sin(t1)^2))/2
+	m34 = - (m1*(2*l12*l23*sin(t1)*sin(t2) + 2*l12*l23*cos(t1)*cos(t2)))/2 - (m6*(2*l12*l23*sin(t1)*sin(t2) + 2*l12*l23*cos(t1)*cos(t2)))/2
+	m35 = -(m6*(2*l12*l36*sin(t1)*sin(t3) + 2*l12*l36*cos(t1)*cos(t3)))/2
+	m36 = 0
+	m37 = 0
+
+	m44 = - (m1*(2*l23^2*cos(t2)^2 + 2*l23^2*sin(t2)^2))/2 - (m2*(2*l23^2*cos(t2)^2 + 2*l23^2*sin(t2)^2))/2 - (m6*(2*l23^2*cos(t2)^2 + 2*l23^2*sin(t2)^2))/2
+	m45 = -(m6*(2*l23*l36*sin(t2)*sin(t3) + 2*l23*l36*cos(t2)*cos(t3)))/2
+	m46 = 0
+	m47 = 0
+
+	m55 = -(m6*(2*l36^2*cos(t3)^2 + 2*l36^2*sin(t3)^2))/2
+	m56 = 0
+	m57 = 0
+
+	m66 = - (m4*(2*l34^2*cos(t4)^2 + 2*l34^2*sin(t4)^2))/2 - (m5*(2*l34^2*cos(t4)^2 + 2*l34^2*sin(t4)^2))/2
+	m67 = -(m5*(2*l34*l45*sin(t4)*sin(t5) + 2*l34*l45*cos(t4)*cos(t5)))/2
+
+	m77 = -(m5*(2*l45^2*cos(t5)^2 + 2*l45^2*sin(t5)^2))/2
+
+	M = [m11 m12 m13 m14 m15 m16 m17;
+			 m12 m22 m23 m24 m25 m26 m27;
+			 m13 m23 m33 m34 m35 m36 m37;
+			 m14 m24 m34 m44 m45 m46 m47;
+			 m15 m25 m35 m45 m55 m56 m57;
+			 m16 m26 m36 m46 m56 m66 m67;
+			 m17 m27 m37 m47 m57 m67 m77]
+
+	return M
+
+	# M = [                   - m1 - m2 - m3 - m4 - m5 - m6,                                                  0,                                                                                                   l12*m1*sin(t1) + l12*m6*sin(t1),                                                                                                   l23*m1*sin(t2) + l23*m2*sin(t2) + l23*m6*sin(t2),                                                  l36*m6*sin(t3),                                                                   l34*m4*sin(t4) + l34*m5*sin(t4),                                                  l45*m5*sin(t5)]
+	# 		[                                               0,                      - m1 - m2 - m3 - m4 - m5 - m6,                                                                                                 - l12*m1*cos(t1) - l12*m6*cos(t1),                                                                                                 - l23*m1*cos(t2) - l23*m2*cos(t2) - l23*m6*cos(t2),                                                 -l36*m6*cos(t3),                                                                 - l34*m4*cos(t4) - l34*m5*cos(t4),                                                 -l45*m5*cos(t5)]
+	# 		[                 l12*m1*sin(t1) + l12*m6*sin(t1),                  - l12*m1*cos(t1) - l12*m6*cos(t1),                                 - (m1*(2*l12^2*cos(t1)^2 + 2*l12^2*sin(t1)^2))/2 - (m6*(2*l12^2*cos(t1)^2 + 2*l12^2*sin(t1)^2))/2,                  - (m1*(2*l12*l23*sin(t1)*sin(t2) + 2*l12*l23*cos(t1)*cos(t2)))/2 - (m6*(2*l12*l23*sin(t1)*sin(t2) + 2*l12*l23*cos(t1)*cos(t2)))/2, -(m6*(2*l12*l36*sin(t1)*sin(t3) + 2*l12*l36*cos(t1)*cos(t3)))/2,                                                                                                 0,                                                               0]
+	# 		[l23*m1*sin(t2) + l23*m2*sin(t2) + l23*m6*sin(t2), - l23*m1*cos(t2) - l23*m2*cos(t2) - l23*m6*cos(t2), - (m1*(2*l12*l23*sin(t1)*sin(t2) + 2*l12*l23*cos(t1)*cos(t2)))/2 - (m6*(2*l12*l23*sin(t1)*sin(t2) + 2*l12*l23*cos(t1)*cos(t2)))/2, - (m1*(2*l23^2*cos(t2)^2 + 2*l23^2*sin(t2)^2))/2 - (m2*(2*l23^2*cos(t2)^2 + 2*l23^2*sin(t2)^2))/2 - (m6*(2*l23^2*cos(t2)^2 + 2*l23^2*sin(t2)^2))/2, -(m6*(2*l23*l36*sin(t2)*sin(t3) + 2*l23*l36*cos(t2)*cos(t3)))/2,                                                                                                 0,                                                               0]
+	# 		[                                  l36*m6*sin(t3),                                    -l36*m6*cos(t3),                                                                   -(m6*(2*l12*l36*sin(t1)*sin(t3) + 2*l12*l36*cos(t1)*cos(t3)))/2,                                                                                    -(m6*(2*l23*l36*sin(t2)*sin(t3) + 2*l23*l36*cos(t2)*cos(t3)))/2,                 -(m6*(2*l36^2*cos(t3)^2 + 2*l36^2*sin(t3)^2))/2,                                                                                                 0,                                                               0]
+	# 		[                 l34*m4*sin(t4) + l34*m5*sin(t4),                  - l34*m4*cos(t4) - l34*m5*cos(t4),                                                                                                                                 0,                                                                                                                                                  0,                                                               0, - (m4*(2*l34^2*cos(t4)^2 + 2*l34^2*sin(t4)^2))/2 - (m5*(2*l34^2*cos(t4)^2 + 2*l34^2*sin(t4)^2))/2, -(m5*(2*l34*l45*sin(t4)*sin(t5) + 2*l34*l45*cos(t4)*cos(t5)))/2]
+	# 		[                                  l45*m5*sin(t5),                                    -l45*m5*cos(t5),                                                                                                                                 0,                                                                                                                                                  0,                                                               0,                                   -(m5*(2*l34*l45*sin(t4)*sin(t5) + 2*l34*l45*cos(t4)*cos(t5)))/2,                 -(m5*(2*l45^2*cos(t5)^2 + 2*l45^2*sin(t5)^2))/2]
+	 
 end
 
-function D_matrix(q)
-    D = zeros(5,5)
-    D[1,1]=p[13]-4*p[6]*p[3]*p[4]*cos(2*q[1]-q[5]-q[3])-2*p[5]*p[3]*p[4]*cos(2*q[1]-q[5]-q[3])-2*p[7]*
-           p[3]*p[4]*cos(2*q[1]-q[5]-q[3])+p[14]+2*p[10]*p[4]*cos(2*q[1]-q[5]-q[3])+2*p[6]*p[3]^2-2*p[10]*p[3]+2*
-           p[7]*p[4]^2-2*p[11]*p[4]+p[7]*p[3]^2+2*p[6]*p[4]^2+p[5]*p[3]^2+p[5]*p[4]^2;
-    D[1,2]=p[7]*p[4]*p[3]*cos(q[2]-q[5]+q[1]-q[3])-p[7]*p[3]^2*cos(-q[2]+q[1])+p[11]*p[3]*cos(q[2]-
-           q[4]+q[1]-q[5])-p[10]*p[3]*cos(-q[2]+q[1])+p[10]*p[4]*cos(q[2]-q[5]+q[1]-q[3])-p[11]*p[4]*cos(-q[2]+q[4]+
-           q[1]-q[3]);
-    D[1,3]=2*p[6]*p[3]*p[4]*cos(2*q[1]-q[5]-q[3])+p[7]*p[3]*p[4]*cos(2*q[1]-q[5]-q[3])+p[5]*p[3]*p[4]*
-           cos(2*q[1]-q[5]-q[3])-p[10]*p[4]*cos(2*q[1]-q[5]-q[3])-p[5]*p[4]^2+2*p[11]*p[4]-2*p[7]*p[4]^2-2*p[6]*
-           p[4]^2-p[14];
-    D[1,4]=-p[11]*(p[3]*cos(q[2]-q[4]+q[1]-q[5])-p[4]*cos(-q[2]+q[4]+q[1]-q[3]));
-    D[1,5]=2*p[6]*p[3]*p[4]*cos(2*q[1]-q[5]-q[3])-p[7]*p[4]*p[3]*cos(q[2]-q[5]+q[1]-q[3])+p[7]*p[3]^2*
-           cos(-q[2]+q[1])+p[8]*p[4]*sin(q[5]+q[1]-q[3])+p[9]*p[4]*cos(q[5]+q[1]-q[3])-p[9]*p[3]*cos(-2*q[5]+q[1])+
-           p[5]*p[3]*p[4]*cos(2*q[1]-q[5]-q[3])+p[10]*p[3]*cos(-q[2]+q[1])-p[10]*p[4]*cos(q[2]-q[5]+q[1]-q[3])+p[7]*
-           p[3]*p[4]*cos(2*q[1]-q[5]-q[3])+p[8]*p[3]*sin(-2*q[5]+q[1])-p[10]*p[4]*cos(2*q[1]-q[5]-q[3])-p[5]*p[3]^2-
-           2*p[6]*p[3]^2+2*p[10]*p[3]-p[7]*p[3]^2-p[13];
-    D[2,1]=p[7]*p[4]*p[3]*cos(q[2]-q[5]+q[1]-q[3])-p[7]*p[3]^2*cos(-q[2]+q[1])+p[11]*p[3]*cos(q[2]-
-           q[4]+q[1]-q[5])-p[10]*p[3]*cos(-q[2]+q[1])+p[10]*p[4]*cos(q[2]-q[5]+q[1]-q[3])-p[11]*p[4]*cos(-q[2]+q[4]+
-           q[1]-q[3]);
-    D[2,2]=p[7]*p[3]^2-2*p[11]*p[3]*cos(2*q[2]-q[4]-q[5])+p[14]+p[13];
-    D[2,3]=-p[4]*(p[7]*p[3]*cos(q[2]-q[5]+q[1]-q[3])+p[10]*cos(q[2]-q[5]+q[1]-q[3])-p[11]*cos(-q[2]+
-           q[4]+q[1]-q[3]));
-    D[2,4]=-p[14]+p[11]*p[3]*cos(2*q[2]-q[4]-q[5]);
-    D[2,5]=-p[7]*p[3]^2-p[13]+p[7]*p[3]^2*cos(-q[2]+q[1])-p[11]*p[3]*cos(q[2]-q[4]+q[1]-q[5])+p[10]*
-           p[3]*cos(-q[2]+q[1])+p[11]*p[3]*cos(2*q[2]-q[4]-q[5]);
-    D[3,1]=2*p[6]*p[3]*p[4]*cos(2*q[1]-q[5]-q[3])+p[7]*p[3]*p[4]*cos(2*q[1]-q[5]-q[3])+p[5]*p[3]*p[4]*
-           cos(2*q[1]-q[5]-q[3])-p[10]*p[4]*cos(2*q[1]-q[5]-q[3])-p[5]*p[4]^2+2*p[11]*p[4]-2*p[7]*p[4]^2-2*p[6]*
-           p[4]^2-p[14];
-    D[3,2]=-p[4]*(p[7]*p[3]*cos(q[2]-q[5]+q[1]-q[3])+p[10]*cos(q[2]-q[5]+q[1]-q[3])-p[11]*cos(-q[2]+
-           q[4]+q[1]-q[3]));
-    D[3,3]=p[5]*p[4]^2-2*p[11]*p[4]+2*p[7]*p[4]^2+2*p[6]*p[4]^2+p[14];
-    D[3,4]=-p[11]*p[4]*cos(-q[2]+q[4]+q[1]-q[3]);
-    D[3,5]=-p[4]*(2*p[6]*p[3]*cos(2*q[1]-q[5]-q[3])-p[7]*p[3]*cos(q[2]-q[5]+q[1]-q[3])+p[8]*sin(q[5]+
-           q[1]-q[3])+p[9]*cos(q[5]+q[1]-q[3])+p[5]*p[3]*cos(2*q[1]-q[5]-q[3])-p[10]*cos(q[2]-q[5]+q[1]-q[3])+p[7]*
-           p[3]*cos(2*q[1]-q[5]-q[3])-p[10]*cos(2*q[1]-q[5]-q[3]));
-    D[4,1]=-p[11]*(p[3]*cos(q[2]-q[4]+q[1]-q[5])-p[4]*cos(-q[2]+q[4]+q[1]-q[3]));
-    D[4,2]=-p[14]+p[11]*p[3]*cos(2*q[2]-q[4]-q[5]);
-    D[4,3]=-p[11]*p[4]*cos(-q[2]+q[4]+q[1]-q[3]);
-    D[4,4]=p[14];
-    D[4,5]=-p[11]*p[3]*(-cos(q[2]-q[4]+q[1]-q[5])+cos(2*q[2]-q[4]-q[5]));
-    D[5,1]=2*p[6]*p[3]*p[4]*cos(2*q[1]-q[5]-q[3])-p[7]*p[4]*p[3]*cos(q[2]-q[5]+q[1]-q[3])+p[7]*p[3]^2*
-           cos(-q[2]+q[1])+p[8]*p[4]*sin(q[5]+q[1]-q[3])+p[9]*p[4]*cos(q[5]+q[1]-q[3])-p[9]*p[3]*cos(-2*q[5]+q[1])+
-           p[5]*p[3]*p[4]*cos(2*q[1]-q[5]-q[3])+p[10]*p[3]*cos(-q[2]+q[1])-p[10]*p[4]*cos(q[2]-q[5]+q[1]-q[3])+p[7]*
-           p[3]*p[4]*cos(2*q[1]-q[5]-q[3])+p[8]*p[3]*sin(-2*q[5]+q[1])-p[10]*p[4]*cos(2*q[1]-q[5]-q[3])-p[5]*p[3]^2-
-           2*p[6]*p[3]^2+2*p[10]*p[3]-p[7]*p[3]^2-p[13];
-    D[5,2]=-p[7]*p[3]^2-p[13]+p[7]*p[3]^2*cos(-q[2]+q[1])-p[11]*p[3]*cos(q[2]-q[4]+q[1]-q[5])+p[10]*
-           p[3]*cos(-q[2]+q[1])+p[11]*p[3]*cos(2*q[2]-q[4]-q[5]);
-    D[5,3]=-p[4]*(2*p[6]*p[3]*cos(2*q[1]-q[5]-q[3])-p[7]*p[3]*cos(q[2]-q[5]+q[1]-q[3])+p[8]*sin(q[5]+
-           q[1]-q[3])+p[9]*cos(q[5]+q[1]-q[3])+p[5]*p[3]*cos(2*q[1]-q[5]-q[3])-p[10]*cos(q[2]-q[5]+q[1]-q[3])+p[7]*
-           p[3]*cos(2*q[1]-q[5]-q[3])-p[10]*cos(2*q[1]-q[5]-q[3]));
-    D[5,4]=-p[11]*p[3]*(-cos(q[2]-q[4]+q[1]-q[5])+cos(2*q[2]-q[4]-q[5]));
-    D[5,5]=-2*p[7]*p[3]^2*cos(-q[2]+q[1])+2*p[9]*p[3]*cos(-2*q[5]+q[1])-2*p[10]*p[3]*cos(-q[2]+q[1])-
-           2*p[8]*p[3]*sin(-2*q[5]+q[1])+p[12]+p[5]*p[3]^2+2*p[6]*p[3]^2-2*p[10]*p[3]+2*p[7]*p[3]^2+2*p[13];
-    return D
-end  
+function N_matrix(q, q̇, params)
+	m1, m2, m3, m4, m5, m6, l12, l23, l34, l45, l36, g = params
+	x, y, t1, t2, t3, t4, t5 = q
+	xd, yd, t1d, t2d, t3d, t4d, t5d = q̇
+	 
+	n1 = - (m1*(2*l12*cos(t1)*t1d^2 + 2*l23*cos(t2)*t2d^2))/2 - (m5*(2*l34*cos(t4)*t4d^2 + 2*l45*cos(t5)*t5d^2))/2 - (m6*(2*l12*cos(t1)*t1d^2 + 2*l23*cos(t2)*t2d^2 + 2*l36*cos(t3)*t3d^2))/2 - l23*m2*t2d^2*cos(t2) - l34*m4*t4d^2*cos(t4)
+	n2 = g*m1 + g*m2 + g*m3 + g*m4 + g*m5 + g*m6 - (m1*(2*l12*sin(t1)*t1d^2 + 2*l23*sin(t2)*t2d^2))/2 - (m5*(2*l34*sin(t4)*t4d^2 + 2*l45*sin(t5)*t5d^2))/2 - (m6*(2*l12*sin(t1)*t1d^2 + 2*l23*sin(t2)*t2d^2 + 2*l36*sin(t3)*t3d^2))/2 - l23*m2*t2d^2*sin(t2) - l34*m4*t4d^2*sin(t4)
+	n3 = (m6*(2*l12*t1d*sin(t1)*(yd + l12*t1d*cos(t1) + l23*t2d*cos(t2) + l36*t3d*cos(t3)) - 2*l12*t1d*cos(t1)*(l12*t1d*sin(t1) - xd + l23*t2d*sin(t2) + l36*t3d*sin(t3))))/2 - (m1*(2*l12*cos(t1)*(l12*sin(t1)*t1d^2 + l23*sin(t2)*t2d^2) - 2*l12*sin(t1)*(l12*cos(t1)*t1d^2 + l23*cos(t2)*t2d^2) + 2*l12*t1d*sin(t1)*(yd + l12*t1d*cos(t1) + l23*t2d*cos(t2)) - 2*l12*t1d*cos(t1)*(l12*t1d*sin(t1) - xd + l23*t2d*sin(t2))))/2 + (m6*(2*l12*sin(t1)*(l12*cos(t1)*t1d^2 + l23*cos(t2)*t2d^2 + l36*cos(t3)*t3d^2) - 2*l12*cos(t1)*(l12*sin(t1)*t1d^2 + l23*sin(t2)*t2d^2 + l36*sin(t3)*t3d^2) - 2*l12*t1d*sin(t1)*(yd + l12*t1d*cos(t1) + l23*t2d*cos(t2) + l36*t3d*cos(t3)) + 2*l12*t1d*cos(t1)*(l12*t1d*sin(t1) - xd + l23*t2d*sin(t2) + l36*t3d*sin(t3))))/2 + (m1*(2*l12*t1d*sin(t1)*(yd + l12*t1d*cos(t1) + l23*t2d*cos(t2)) - 2*l12*t1d*cos(t1)*(l12*t1d*sin(t1) - xd + l23*t2d*sin(t2))))/2 + g*l12*m1*cos(t1) + g*l12*m6*cos(t1)
+	n4 = (m6*(2*l23*t2d*sin(t2)*(yd + l12*t1d*cos(t1) + l23*t2d*cos(t2) + l36*t3d*cos(t3)) - 2*l23*t2d*cos(t2)*(l12*t1d*sin(t1) - xd + l23*t2d*sin(t2) + l36*t3d*sin(t3))))/2 - (m1*(2*l23*cos(t2)*(l12*sin(t1)*t1d^2 + l23*sin(t2)*t2d^2) - 2*l23*sin(t2)*(l12*cos(t1)*t1d^2 + l23*cos(t2)*t2d^2) + 2*l23*t2d*sin(t2)*(yd + l12*t1d*cos(t1) + l23*t2d*cos(t2)) - 2*l23*t2d*cos(t2)*(l12*t1d*sin(t1) - xd + l23*t2d*sin(t2))))/2 + (m6*(2*l23*sin(t2)*(l12*cos(t1)*t1d^2 + l23*cos(t2)*t2d^2 + l36*cos(t3)*t3d^2) - 2*l23*cos(t2)*(l12*sin(t1)*t1d^2 + l23*sin(t2)*t2d^2 + l36*sin(t3)*t3d^2) - 2*l23*t2d*sin(t2)*(yd + l12*t1d*cos(t1) + l23*t2d*cos(t2) + l36*t3d*cos(t3)) + 2*l23*t2d*cos(t2)*(l12*t1d*sin(t1) - xd + l23*t2d*sin(t2) + l36*t3d*sin(t3))))/2 + (m1*(2*l23*t2d*sin(t2)*(yd + l12*t1d*cos(t1) + l23*t2d*cos(t2)) - 2*l23*t2d*cos(t2)*(l12*t1d*sin(t1) - xd + l23*t2d*sin(t2))))/2 + g*l23*m1*cos(t2) + g*l23*m2*cos(t2) + g*l23*m6*cos(t2)
+  n5 = (m6*(2*l36*t3d*sin(t3)*(yd + l12*t1d*cos(t1) + l23*t2d*cos(t2) + l36*t3d*cos(t3)) - 2*l36*t3d*cos(t3)*(l12*t1d*sin(t1) - xd + l23*t2d*sin(t2) + l36*t3d*sin(t3))))/2 + (m6*(2*l36*sin(t3)*(l12*cos(t1)*t1d^2 + l23*cos(t2)*t2d^2 + l36*cos(t3)*t3d^2) - 2*l36*cos(t3)*(l12*sin(t1)*t1d^2 + l23*sin(t2)*t2d^2 + l36*sin(t3)*t3d^2) - 2*l36*t3d*sin(t3)*(yd + l12*t1d*cos(t1) + l23*t2d*cos(t2) + l36*t3d*cos(t3)) + 2*l36*t3d*cos(t3)*(l12*t1d*sin(t1) - xd + l23*t2d*sin(t2) + l36*t3d*sin(t3))))/2 + g*l36*m6*cos(t3)
+	n6 = (m5*(2*l34*t4d*sin(t4)*(yd + l34*t4d*cos(t4) + l45*t5d*cos(t5)) - 2*l34*t4d*cos(t4)*(l34*t4d*sin(t4) - xd + l45*t5d*sin(t5))))/2 - (m5*(2*l34*cos(t4)*(l34*sin(t4)*t4d^2 + l45*sin(t5)*t5d^2) - 2*l34*sin(t4)*(l34*cos(t4)*t4d^2 + l45*cos(t5)*t5d^2) + 2*l34*t4d*sin(t4)*(yd + l34*t4d*cos(t4) + l45*t5d*cos(t5)) - 2*l34*t4d*cos(t4)*(l34*t4d*sin(t4) - xd + l45*t5d*sin(t5))))/2 + g*l34*m4*cos(t4) + g*l34*m5*cos(t4)
+	n7 = (m5*(2*l45*t5d*sin(t5)*(yd + l34*t4d*cos(t4) + l45*t5d*cos(t5)) - 2*l45*t5d*cos(t5)*(l34*t4d*sin(t4) - xd + l45*t5d*sin(t5))))/2 - (m5*(2*l45*cos(t5)*(l34*sin(t4)*t4d^2 + l45*sin(t5)*t5d^2) - 2*l45*sin(t5)*(l34*cos(t4)*t4d^2 + l45*cos(t5)*t5d^2) + 2*l45*t5d*sin(t5)*(yd + l34*t4d*cos(t4) + l45*t5d*cos(t5)) - 2*l45*t5d*cos(t5)*(l34*t4d*sin(t4) - xd + l45*t5d*sin(t5))))/2 + g*l45*m5*cos(t5)
 
-function C_matrix(q,dq)
-    C = zeros(5,5)
-    C[1,1]=sin(2*q[1]-q[5]-q[3])*p[4]*(2*dq[1]-dq[3]-dq[5])*(2*p[6]*p[3]+p[5]*p[3]+p[7]*p[3]-p[10]);
-    C[1,2]=-dq[2]*p[7]*p[4]*p[3]*sin(q[2]-q[5]+q[1]-q[3])-dq[2]*p[7]*p[3]^2*sin(-q[2]+q[1])-dq[2]*
-           p[11]*p[3]*sin(q[2]-q[4]+q[1]-q[5])-dq[2]*p[10]*p[3]*sin(-q[2]+q[1])-dq[2]*p[10]*p[4]*sin(q[2]-q[5]+q[1]-
-           q[3])-p[11]*p[4]*sin(-q[2]+q[4]+q[1]-q[3])*dq[2]+dq[4]*p[11]*p[3]*sin(q[2]-q[4]+q[1]-q[5])+p[11]*p[4]*
-           sin(-q[2]+q[4]+q[1]-q[3])*dq[4]+dq[5]*p[7]*p[4]*p[3]*sin(q[2]-q[5]+q[1]-q[3])+dq[5]*p[7]*p[3]^2*sin(-
-           q[2]+q[1])+dq[5]*p[10]*p[3]*sin(-q[2]+q[1])+dq[5]*p[10]*p[4]*sin(q[2]-q[5]+q[1]-q[3]);
-    C[1,3]=-sin(2*q[1]-q[5]-q[3])*p[4]*(dq[1]-dq[3])*(2*p[6]*p[3]+p[5]*p[3]+p[7]*p[3]-p[10]);
-    C[1,4]=p[11]*(dq[2]-dq[4])*(p[3]*sin(q[2]-q[4]+q[1]-q[5])+p[4]*sin(-q[2]+q[4]+q[1]-q[3]));
-    C[1,5]=-2*dq[1]*p[6]*p[3]*p[4]*sin(2*q[1]-q[5]-q[3])-dq[1]*p[5]*p[3]*p[4]*sin(2*q[1]-q[5]-q[3])-
-           dq[1]*p[7]*p[3]*p[4]*sin(2*q[1]-q[5]-q[3])+dq[1]*p[10]*p[4]*sin(2*q[1]-q[5]-q[3])+dq[2]*p[7]*p[4]*p[3]*
-           sin(q[2]-q[5]+q[1]-q[3])+dq[2]*p[7]*p[3]^2*sin(-q[2]+q[1])+dq[2]*p[10]*p[3]*sin(-q[2]+q[1])+dq[2]*p[10]*p[4]*
-           sin(q[2]-q[5]+q[1]-q[3])+2*dq[5]*p[6]*p[3]*p[4]*sin(2*q[1]-q[5]-q[3])-dq[5]*p[7]*p[4]*p[3]*sin(q[2]-q[5]+
-           q[1]-q[3])+dq[5]*p[8]*p[4]*cos(q[5]+q[1]-q[3])-dq[5]*p[9]*p[4]*sin(q[5]+q[1]-q[3])-dq[5]*p[9]*p[3]*sin(-
-           2*q[5]+q[1])+dq[5]*p[5]*p[3]*p[4]*sin(2*q[1]-q[5]-q[3])-dq[5]*p[10]*p[4]*sin(q[2]-q[5]+q[1]-q[3])+
-           dq[5]*p[7]*p[3]*p[4]*sin(2*q[1]-q[5]-q[3])-dq[5]*p[8]*p[3]*cos(-2*q[5]+q[1])-dq[5]*p[10]*p[4]*sin(2*q[1]-
-           q[5]-q[3])-dq[5]*p[7]*p[3]^2*sin(-q[2]+q[1])-dq[5]*p[10]*p[3]*sin(-q[2]+q[1]);
-    C[2,1]=-dq[1]*p[7]*p[4]*p[3]*sin(q[2]-q[5]+q[1]-q[3])+dq[1]*p[7]*p[3]^2*sin(-q[2]+q[1])-p[11]*
-           p[3]*sin(q[2]-q[4]+q[1]-q[5])*dq[1]+dq[1]*p[10]*p[3]*sin(-q[2]+q[1])-dq[1]*p[10]*p[4]*sin(q[2]-q[5]+q[1]-
-           q[3])+p[11]*p[4]*sin(-q[2]+q[4]+q[1]-q[3])*dq[1]+dq[3]*p[7]*p[4]*p[3]*sin(q[2]-q[5]+q[1]-q[3])+dq[3]*
-           p[10]*p[4]*sin(q[2]-q[5]+q[1]-q[3])-p[11]*p[4]*sin(-q[2]+q[4]+q[1]-q[3])*dq[3]-dq[5]*p[7]*p[3]^2*sin(-
-           q[2]+q[1])+p[11]*p[3]*sin(q[2]-q[4]+q[1]-q[5])*dq[5]-dq[5]*p[10]*p[3]*sin(-q[2]+q[1]);
-    C[2,2]=p[11]*p[3]*sin(2*q[2]-q[4]-q[5])*(2*dq[2]-dq[4]-dq[5]);
-    C[2,3]=-p[4]*(dq[1]-dq[3])*(-p[7]*p[3]*sin(q[2]-q[5]+q[1]-q[3])-p[10]*sin(q[2]-q[5]+q[1]-q[3])+
-           p[11]*sin(-q[2]+q[4]+q[1]-q[3]));
-    C[2,4]=-p[11]*p[3]*sin(2*q[2]-q[4]-q[5])*(dq[2]-dq[4]);
-    C[2,5]=-p[3]*(dq[1]*p[7]*p[3]*sin(-q[2]+q[1])-dq[1]*p[11]*sin(q[2]-q[4]+q[1]-q[5])+dq[1]*p[10]*
-           sin(-q[2]+q[1])+p[11]*sin(2*q[2]-q[4]-q[5])*dq[2]+dq[5]*p[11]*sin(q[2]-q[4]+q[1]-q[5])-p[11]*sin(2*q[2]-
-           q[4]-q[5])*dq[5]-dq[5]*p[7]*p[3]*sin(-q[2]+q[1])-dq[5]*p[10]*sin(-q[2]+q[1]));
-    C[3,1]=-sin(2*q[1]-q[5]-q[3])*p[4]*(dq[1]-dq[5])*(2*p[6]*p[3]+p[5]*p[3]+p[7]*p[3]-p[10]);
-    C[3,2]=p[4]*(dq[2]*p[7]*p[3]*sin(q[2]-q[5]+q[1]-q[3])+dq[2]*p[10]*sin(q[2]-q[5]+q[1]-q[3])+dq[2]*
-           p[11]*sin(-q[2]+q[4]+q[1]-q[3])-dq[4]*p[11]*sin(-q[2]+q[4]+q[1]-q[3])-dq[5]*p[7]*p[3]*sin(q[2]-q[5]+q[1]-
-           q[3])-dq[5]*p[10]*sin(q[2]-q[5]+q[1]-q[3]));
-    C[3,3]=0;
-    C[3,4]=-p[11]*p[4]*sin(-q[2]+q[4]+q[1]-q[3])*(dq[2]-dq[4]);
-    C[3,5]=p[4]*(2*dq[1]*p[6]*p[3]*sin(2*q[1]-q[5]-q[3])+dq[1]*p[7]*p[3]*sin(2*q[1]-q[5]-q[3])+dq[1]*
-           p[5]*p[3]*sin(2*q[1]-q[5]-q[3])-dq[1]*p[10]*sin(2*q[1]-q[5]-q[3])-dq[2]*p[7]*p[3]*sin(q[2]-q[5]+q[1]-
-           q[3])-dq[2]*p[10]*sin(q[2]-q[5]+q[1]-q[3])-2*dq[5]*p[6]*p[3]*sin(2*q[1]-q[5]-q[3])+dq[5]*p[7]*p[3]*
-           sin(q[2]-q[5]+q[1]-q[3])-dq[5]*p[8]*cos(q[5]+q[1]-q[3])+dq[5]*p[9]*sin(q[5]+q[1]-q[3])-dq[5]*p[5]*p[3]*sin(2*
-           q[1]-q[5]-q[3])+dq[5]*p[10]*sin(q[2]-q[5]+q[1]-q[3])-dq[5]*p[7]*p[3]*sin(2*q[1]-q[5]-q[3])+dq[5]*p[10]*
-           sin(2*q[1]-q[5]-q[3]));
-    C[4,1]=p[11]*(dq[1]*p[3]*sin(q[2]-q[4]+q[1]-q[5])-dq[1]*p[4]*sin(-q[2]+q[4]+q[1]-q[3])+dq[3]*p[4]*
-           sin(-q[2]+q[4]+q[1]-q[3])-dq[5]*p[3]*sin(q[2]-q[4]+q[1]-q[5]));
-    C[4,2]=-p[11]*p[3]*sin(2*q[2]-q[4]-q[5])*(dq[2]-dq[5]);
-    C[4,3]=p[11]*p[4]*sin(-q[2]+q[4]+q[1]-q[3])*(dq[1]-dq[3]);
-    C[4,4]=0;
-    C[4,5]=-p[11]*p[3]*(dq[1]*sin(q[2]-q[4]+q[1]-q[5])-sin(2*q[2]-q[4]-q[5])*dq[2]-dq[5]*sin(q[2]-
-           q[4]+q[1]-q[5])+sin(2*q[2]-q[4]-q[5])*dq[5]);
-    C[5,1]=-2*dq[1]*p[6]*p[3]*p[4]*sin(2*q[1]-q[5]-q[3])+dq[1]*p[7]*p[4]*p[3]*sin(q[2]-q[5]+q[1]-
-           q[3])-dq[1]*p[7]*p[3]^2*sin(-q[2]+q[1])+dq[1]*p[8]*p[4]*cos(q[5]+q[1]-q[3])-dq[1]*p[9]*p[4]*sin(q[5]+q[1]-
-           q[3])+dq[1]*p[9]*p[3]*sin(-2*q[5]+q[1])-dq[1]*p[5]*p[3]*p[4]*sin(2*q[1]-q[5]-q[3])-dq[1]*p[10]*p[3]*sin(-
-           q[2]+q[1])+dq[1]*p[10]*p[4]*sin(q[2]-q[5]+q[1]-q[3])-dq[1]*p[7]*p[3]*p[4]*sin(2*q[1]-q[5]-q[3])+dq[1]*
-           p[8]*p[3]*cos(-2*q[5]+q[1])+dq[1]*p[10]*p[4]*sin(2*q[1]-q[5]-q[3])-dq[3]*p[7]*p[4]*p[3]*sin(q[2]-q[5]+
-           q[1]-q[3])-dq[3]*p[8]*p[4]*cos(q[5]+q[1]-q[3])+dq[3]*p[9]*p[4]*sin(q[5]+q[1]-q[3])-dq[3]*p[10]*p[4]*
-           sin(q[2]-q[5]+q[1]-q[3])+2*dq[3]*p[6]*p[3]*p[4]*sin(2*q[1]-q[5]-q[3])+dq[3]*p[5]*p[3]*p[4]*sin(2*q[1]-q[5]-
-           q[3])+dq[3]*p[7]*p[3]*p[4]*sin(2*q[1]-q[5]-q[3])-dq[3]*p[10]*p[4]*sin(2*q[1]-q[5]-q[3])+dq[5]*p[7]*p[3]^2*
-           sin(-q[2]+q[1])-dq[5]*p[9]*p[3]*sin(-2*q[5]+q[1])+dq[5]*p[10]*p[3]*sin(-q[2]+q[1])-dq[5]*p[8]*p[3]*cos(-
-           2*q[5]+q[1]);
-    C[5,2]=p[3]*(dq[2]*p[7]*p[3]*sin(-q[2]+q[1])+dq[2]*p[11]*sin(q[2]-q[4]+q[1]-q[5])+dq[2]*p[10]*
-           sin(-q[2]+q[1])-p[11]*sin(2*q[2]-q[4]-q[5])*dq[2]-dq[4]*p[11]*sin(q[2]-q[4]+q[1]-q[5])+p[11]*sin(2*q[2]-
-           q[4]-q[5])*dq[4]-dq[5]*p[7]*p[3]*sin(-q[2]+q[1])-dq[5]*p[10]*sin(-q[2]+q[1]));
-    C[5,3]=p[4]*(dq[1]-dq[3])*(2*p[6]*p[3]*sin(2*q[1]-q[5]-q[3])-p[7]*p[3]*sin(q[2]-q[5]+q[1]-q[3])-
-           p[8]*cos(q[5]+q[1]-q[3])+p[9]*sin(q[5]+q[1]-q[3])+p[5]*p[3]*sin(2*q[1]-q[5]-q[3])-p[10]*sin(q[2]-q[5]+
-           q[1]-q[3])+p[7]*p[3]*sin(2*q[1]-q[5]-q[3])-p[10]*sin(2*q[1]-q[5]-q[3]));
-    C[5,4]=-p[11]*p[3]*(dq[2]-dq[4])*(sin(q[2]-q[4]+q[1]-q[5])-sin(2*q[2]-q[4]-q[5]));
-    C[5,5]=p[3]*(dq[1]*p[7]*p[3]*sin(-q[2]+q[1])-dq[1]*p[9]*sin(-2*q[5]+q[1])+dq[1]*p[10]*sin(-q[2]+
-           q[1])-dq[1]*p[8]*cos(-2*q[5]+q[1])-dq[2]*p[7]*p[3]*sin(-q[2]+q[1])-dq[2]*p[10]*sin(-q[2]+q[1])+2*dq[5]*
-           p[9]*sin(-2*q[5]+q[1])+2*dq[5]*p[8]*cos(-2*q[5]+q[1]));
-    return C
-end
+	N = [n1; n2; n3; n4; n5; n6; n7]
 
-function B_matrix()
-    B = zeros(5,4)
-    B[1,1]=1;     B[1,2]=0;     B[1,3]=-2;    B[1,4]=0;
-    B[2,1]=0;     B[2,2]=1;     B[2,3]=0;     B[2,4]=-2;
-    B[3,1]=0;     B[3,2]=0;     B[3,3]=1;     B[3,4]=0;
-    B[4,1]=0;     B[4,2]=0;     B[4,3]=0;     B[4,4]=1;
-    B[5,1]=-2;    B[5,2]=-2;    B[5,3]=1;     B[5,4]=1;
-    return B
-end
-
-function G_vector(q)
-    G = zeros(5,1)
-    G[1,1]=p[1]*(p[3]*sin(q[1]-q[5])*p[5]+p[4]*sin(q[1]-q[3])*p[5]+2*p[3]*sin(q[1]-q[5])*p[6]+2*p[4]*
-           sin(q[1]-q[3])*p[6]-p[10]*sin(q[1]-q[5])+2*p[4]*sin(q[1]-q[3])*p[7]-p[11]*sin(q[1]-q[3])+p[3]*sin(q[1]-q[5])*p[7]);
-    G[2,1]=-p[1]*(p[10]*sin(q[2]-q[5])+p[3]*sin(q[2]-q[5])*p[7]+p[11]*sin(q[2]-q[4]));
-    G[3,1]=-p[1]*sin(q[1]-q[3])*(p[4]*p[5]+2*p[4]*p[6]+2*p[4]*p[7]-p[11]);
-    G[4,1]=p[1]*p[11]*sin(q[2]-q[4]);
-    G[5,1]=p[1]*(-p[3]*sin(q[1]-q[5])*p[5]-sin(q[5])*p[9]+cos(q[5])*p[8]-2*p[3]*sin(q[1]-q[5])*p[6]+
-           p[10]*sin(q[1]-q[5])+p[10]*sin(q[2]-q[5])-p[3]*sin(q[1]-q[5])*p[7]+p[3]*sin(q[2]-q[5])*p[7]);
-    return G
-end
-  
-function biped_dynamics_5link(x, u, t)
-    u  = [0,0,0,0]
-    q, dq = x[1:5], x[6:10]
-    D = D_matrix(q)
-    C = C_matrix(q, dq)
-    B = B_matrix()
-    G = G_vector(q)
-    ddq = D \ (B*u - C*dq - G)
-    return [dq; ddq]
-end
-
-function idReset(x)
-    xplus = deepcopy(x)
-    return xplus
-end
-   
-function idGuard(x,t)
-    return 1
+	return N
 end
