@@ -2,7 +2,7 @@
 # dynamics equation: M(q)q̈ + N(q,q') = B*u + J(q,q̇)ᵀλ
 
 params = (m1 = 1,  m2 = 1,  m3 = 1,  m4 = 1,  m5 = 1,  m6 = 1,
-		 l12 = 1, l23 = 1, l34 = 1, l45 = 1, l36 = 1, g = 9.81)
+		 			l12 = 1, l23 = 1, l34 = 1, l45 = 1, l36 = 1, g = 9.81)
 
 
 function biped5link_kinematics(q, params)
@@ -145,13 +145,14 @@ end
 
 function B_matrix()
 	# q = [x y t1 t2 t3 t4 t5]
-	B = [0 0 0 0 0 0 0;
-			 0 0 0 0 0 0 0;
-			 0 0 1 0 0 0 0;
-			 0 0 0 1 0 0 0;
-			 0 0 0 0 1 0 0;
-			 0 0 0 0 0 1 0;
-			 0 0 0 0 0 0 1]
+	B = [ 0  0  0  0;
+				0  0  0  0;
+			 -1  0  0  0;
+				1 -1  0  0;
+				0  0  1  0;
+				0  1 -1  1;
+				0  0  0 -1]
+
 	return B
 end
 
@@ -166,7 +167,8 @@ function left_foot_constraint(q, params, fpos)
 	c3 = 0
 	c4 = 0
 
-	C = [c1; c2; c3; c4]
+	# C = [c1; c2; c3; c4]
+	C = [c1; c2]
 	return C
 end
 
@@ -181,7 +183,8 @@ function right_foot_constraint(q, params, fpos)
 	c3 = r2[1] - f2posX
 	c4 = r2[2] - f2posY
 
-	C = [c1; c2; c3; c4]
+	# C = [c1; c2; c3; c4]
+	C = [c3; c4]
 	return C
 end
 
@@ -206,7 +209,16 @@ function J_matrix(q, params, constraint, fpos)
 	return J
 end
 
-function kkt_conditions(q, q̇, u, params, h)
+function groundGuard(q, joint, params, ground_height)
+	joint_pos = biped5link_kinematics(q, params)[joint]
+	joint_x = joint_pos[1]
+	joint_y = joint_pos[2]
+	impactCheck = joint_y - ground_height(joint_x)
+	return impactCheck
+end
+
+# could be a misnomer, might just rename to "kkt_rhs"
+function kkt_conditions(q, q̇, u, params, h, constraint, fpos)
 	# rigth hand side of the KKT system:
 	# [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
 	# [J(q)*h         0] [   λ] = [               -C(q)]
@@ -216,7 +228,7 @@ function kkt_conditions(q, q̇, u, params, h)
 	B = B_matrix()
 
 	kkt_conditions = [M*q̇ + h*B*u - h*N;
-						 				-C(q)]
+						 				-constraint(q, params, fpos)]
 	return kkt_conditions
 end
 
@@ -236,38 +248,57 @@ end
 function kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
 	# solve the KKT system for the newton step
 	kkt_jac = kkt_jacobian(q, params, constraint, fpos, h)
-	kkt_cond = kkt_conditions(q, q̇, u, params, h)
+	kkt_cond = kkt_conditions(q, q̇, u, params, h, constraint, fpos)
 
 	newton_step = kkt_jac \ kkt_cond
 	return newton_step
 end
 
-function forward_dynamics(q, q̇, u, params, fpos, constraint, h)
+function forward_dynamics(q, q̇, u, params, fpos, constraint, h, tol=1e-3, max_iter=50, verbose=true)
 	# solve the KKT system for the newton step
-	newton_step = kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
+	q_old = q
+	old_step = kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
+	newton_step = old_step
+	for i = 1:max_iter-1
+		q̇ₖ₊₁ = newton_step[1:7]
+		q = q + q̇ₖ₊₁*h
 
-	# update q and q̇
-	q̇ₖ₊₁ = newton_step[1:7]
-	λ = newton_step[8:end]
+		newton_step = kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
+		step_change = norm(newton_step - old_step)
+		old_step = newton_step
 
-	qₖ₊₁ = q + q̇ₖ₊₁*h
-	return qₖ₊₁, q̇ₖ₊₁, λ
+		if verbose 
+			print("iter: $i    |r|: $step_change   \n")
+		end
+		
+		# check convergence
+		if norm(step_change) < tol
+			qₖ₊₁ = q
+			λ = newton_step[8:end]
+			return qₖ₊₁, q̇ₖ₊₁, λ
+		end
+	end
+	error("Newton iteration did not converge")
 end
 
 function simulate(q, q̇, u, params, fpos, constraint, h, T)
+	t = h
 	q_hist = zeros(T, 7)
 	q̇_hist = zeros(T, 7)
-	λ_hist = zeros(T, 4)
+	λ_hist = zeros(T, 2)
 
 	q_hist[1, :] = q
 	q̇_hist[1, :] = q̇
 
-	for t = 2:T
-		q, q̇, λ = forward_dynamics(q, q̇, u, params, fpos, constraint, h)
-		q_hist[t, :] = q
-		q̇_hist[t, :] = q̇
-		λ_hist[t, :] = λ
+	for i = 2:T
+		print("t: $t \n")
+		t += h
+		q, q̇, λ = forward_dynamics(q, q̇, u(t), params, fpos, constraint, h)
+		q_hist[i, :] = q
+		q̇_hist[i, :] = q̇
+		λ_hist[i, :] = λ
 	end
 
 	return q_hist, q̇_hist, λ_hist
 end
+
