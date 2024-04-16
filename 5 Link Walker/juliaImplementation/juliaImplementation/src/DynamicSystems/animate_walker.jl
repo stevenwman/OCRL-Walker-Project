@@ -98,3 +98,51 @@ function animate_walker(state_matrix, params, guard=nothing, saveAnimation=true)
         gif(anim, "5_link_walker.gif", fps = 30)
     end
 end
+
+function plot_states(state_matrix, params)
+    # retrieve all joint angles
+    q1 = state_matrix[3, :]
+    q2 = state_matrix[4, :]
+    q3 = state_matrix[5, :]
+    q4 = state_matrix[6, :]
+    q5 = state_matrix[7, :]
+
+    dq1 = state_matrix[10, :]
+    dq2 = state_matrix[11, :]
+    dq3 = state_matrix[12, :]
+    dq4 = state_matrix[13, :]
+    dq5 = state_matrix[14, :]
+
+
+    # plots all joint angles on same graph
+    p = plot(q1, label="q1")
+    plot!(q2, label="q2")
+    plot!(q3, label="q3")
+    plot!(q4, label="q4")
+    plot!(q5, label="q5")
+
+    # Add labels, title, legend, etc.
+    xlabel!("Timestep")
+    ylabel!("Angle")
+    title!("Joint angles vs timestep")
+    display(p)
+
+
+    # plot individual limit cycles
+    # Create individual plots for each set of data
+    plot1 = plot(q1, dq1, title="Joint 1", xlims=(0, pi), ylims=(0, pi), legend=false)
+    plot2 = plot(q2, dq2, title="Joint 2", xlims=(0, pi), ylims=(0, pi), legend=false)
+    plot3 = plot(q3, dq3, title="Joint 3", xlims=(0, pi), ylims=(0, pi), legend=false)
+    plot4 = plot(q4, dq4, title="Joint 4", xlims=(0, pi), ylims=(0, pi), legend=false)
+    plot5 = plot(q5, dq5, title="Joint 5", xlims=(0, pi), ylims=(0, pi), legend=false)
+
+    # Combine plots into a single figure with 2 plots in each row
+    plot_grid = plot(plot1, plot2, plot3, plot4, plot5, layout=(5, 1))
+
+    # Show the combined figure
+    display(plot_grid)
+
+
+
+   
+end
