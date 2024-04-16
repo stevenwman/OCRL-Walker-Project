@@ -138,7 +138,8 @@ function N_matrix(q, q̇, params)
 	n6 = (m5*(2*l34*t4d*sin(t4)*(yd + l34*t4d*cos(t4) + l45*t5d*cos(t5)) - 2*l34*t4d*cos(t4)*(l34*t4d*sin(t4) - xd + l45*t5d*sin(t5))))/2 - (m5*(2*l34*cos(t4)*(l34*sin(t4)*t4d^2 + l45*sin(t5)*t5d^2) - 2*l34*sin(t4)*(l34*cos(t4)*t4d^2 + l45*cos(t5)*t5d^2) + 2*l34*t4d*sin(t4)*(yd + l34*t4d*cos(t4) + l45*t5d*cos(t5)) - 2*l34*t4d*cos(t4)*(l34*t4d*sin(t4) - xd + l45*t5d*sin(t5))))/2 + g*l34*m4*cos(t4) + g*l34*m5*cos(t4)
 	n7 = (m5*(2*l45*t5d*sin(t5)*(yd + l34*t4d*cos(t4) + l45*t5d*cos(t5)) - 2*l45*t5d*cos(t5)*(l34*t4d*sin(t4) - xd + l45*t5d*sin(t5))))/2 - (m5*(2*l45*cos(t5)*(l34*sin(t4)*t4d^2 + l45*sin(t5)*t5d^2) - 2*l45*sin(t5)*(l34*cos(t4)*t4d^2 + l45*cos(t5)*t5d^2) + 2*l45*t5d*sin(t5)*(yd + l34*t4d*cos(t4) + l45*t5d*cos(t5)) - 2*l45*t5d*cos(t5)*(l34*t4d*sin(t4) - xd + l45*t5d*sin(t5))))/2 + g*l45*m5*cos(t5)
 
-	N = [n1; n2; n3; n4; n5; n6; n7]
+	# flip sign because how output of "equationsToMatrix" is defined
+	N = - [n1; n2; n3; n4; n5; n6; n7]
 	return N
 end
 
@@ -166,7 +167,6 @@ function left_foot_constraint(q, params, fpos)
 	c4 = 0
 
 	C = [c1; c2; c3; c4]
-
 	return C
 end
 
@@ -182,7 +182,6 @@ function right_foot_constraint(q, params, fpos)
 	c4 = r2[2] - f2posY
 
 	C = [c1; c2; c3; c4]
-
 	return C
 end
 
@@ -199,6 +198,76 @@ function both_foot_constraint(q, params, fpos)
 	c4 = r2[2] - f2posY
 
 	C = [c1; c2; c3; c4]
-
 	return C
+end
+
+function J_matrix(q, params, constraint, fpos)
+	J  = ForwardDiff.jacobian(_q -> constraint(_q, params, fpos), q)
+	return J
+end
+
+function kkt_conditions(q, q̇, u, params, h)
+	# rigth hand side of the KKT system:
+	# [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
+	# [J(q)*h         0] [   λ] = [               -C(q)]
+
+	M = M_matrix(q, params)
+	N = N_matrix(q, q̇, params)
+	B = B_matrix()
+
+	kkt_conditions = [M*q̇ + h*B*u - h*N;
+						 				-C(q)]
+	return kkt_conditions
+end
+
+function kkt_jacobian(q, params, constraint, fpos, h)
+	# returns the left hand side of the KKT system:
+	# [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
+	# [J(q)*h         0] [   λ] = [               -C(q)]
+
+	M = M_matrix(q, params)
+	J = J_matrix(q, params, constraint, fpos)
+
+	kkt_jac = [M   -J'*h;
+						 J*h zeros(size(J, 1), size(J, 1))]
+	return kkt_jac
+end
+
+function kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
+	# solve the KKT system for the newton step
+	kkt_jac = kkt_jacobian(q, params, constraint, fpos, h)
+	kkt_cond = kkt_conditions(q, q̇, u, params, h)
+
+	newton_step = kkt_jac \ kkt_cond
+	return newton_step
+end
+
+function forward_dynamics(q, q̇, u, params, fpos, constraint, h)
+	# solve the KKT system for the newton step
+	newton_step = kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
+
+	# update q and q̇
+	q̇ₖ₊₁ = newton_step[1:7]
+	λ = newton_step[8:end]
+
+	qₖ₊₁ = q + q̇ₖ₊₁*h
+	return qₖ₊₁, q̇ₖ₊₁, λ
+end
+
+function simulate(q, q̇, u, params, fpos, constraint, h, T)
+	q_hist = zeros(T, 7)
+	q̇_hist = zeros(T, 7)
+	λ_hist = zeros(T, 4)
+
+	q_hist[1, :] = q
+	q̇_hist[1, :] = q̇
+
+	for t = 2:T
+		q, q̇, λ = forward_dynamics(q, q̇, u, params, fpos, constraint, h)
+		q_hist[t, :] = q
+		q̇_hist[t, :] = q̇
+		λ_hist[t, :] = λ
+	end
+
+	return q_hist, q̇_hist, λ_hist
 end
