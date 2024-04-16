@@ -160,7 +160,7 @@ function left_foot_constraint(q, params, fpos)
     f1posX, f1posY, f2posX, f2posY = fpos
 
     r = biped5link_kinematics(q, params)
-    r1 = r[1:2]
+    r1 = r[1,:]
 
     c1 = r1[1] - f1posX
     c2 = r1[2] - f1posY
@@ -176,7 +176,7 @@ function right_foot_constraint(q, params, fpos)
     f1posX, f1posY, f2posX, f2posY = fpos
 
     r = biped5link_kinematics(q, params)
-    r2 = r[3:4]
+    r5 = r[5,:]
 
     c1 = 0
     c2 = 0
@@ -192,13 +192,13 @@ function both_foot_constraint(q, params, fpos)
     f1posX, f1posY, f2posX, f2posY = fpos
 
     r = biped5link_kinematics(q, params)
-    r1 = r[1:2]
-    r2 = r[3:4]
+    r1 = r[1,:]
+    r5 = r[5,:]
 
     c1 = r1[1] - f1posX
     c2 = r1[2] - f1posY
-    c3 = r2[1] - f2posX
-    c4 = r2[2] - f2posY
+    c3 = r5[1] - f2posX
+    c4 = r5[2] - f2posY
 
     C = [c1; c2; c3; c4]
     return C
@@ -232,22 +232,22 @@ function kkt_conditions(q, q̇, u, params, h, constraint, fpos)
     return kkt_conditions
 end
 
-function kkt_jacobian(q, params, constraint, fpos, h)
+function kkt_jacobian(q, qₖ₊₁, params, constraint, fpos, h)
     # returns the left hand side of the KKT system:
     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
     # [J(q)*h         0] [   λ] = [               -C(q)]
 
-    M = M_matrix(q, params)
+    M = M_matrix(qₖ₊₁, params)
     J = J_matrix(q, params, constraint, fpos)
 
     kkt_jac = [M   -J'*h;
-                         J*h zeros(size(J, 1), size(J, 1))]
+               J*h zeros(size(J, 1), size(J, 1))]
     return kkt_jac
 end
 
-function kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
+function kkt_newton_step(q, qₖ₊₁, q̇, u, params, fpos, constraint, h)
     # solve the KKT system for the newton step
-    kkt_jac = kkt_jacobian(q, params, constraint, fpos, h)
+    kkt_jac = kkt_jacobian(q, qₖ₊₁, params, constraint, fpos, h)
     kkt_cond = kkt_conditions(q, q̇, u, params, h, constraint, fpos)
 
     newton_step = kkt_jac \ kkt_cond
@@ -256,13 +256,13 @@ end
 
 function forward_dynamics(q, q̇, u, params, fpos, constraint, h, tol=1e-7, max_iter=50, verbose=true)
     # solve the KKT system for the newton step
-    old_step = kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
+    old_step = kkt_newton_step(q, q, q̇, u, params, fpos, constraint, h)
     newton_step = old_step
     for i = 1:max_iter-1
         q̇ₖ₊₁ = newton_step[1:7]
         qₖ₊₁ = q + q̇ₖ₊₁*h
 
-        newton_step = kkt_newton_step(qₖ₊₁, q̇, u, params, fpos, constraint, h)
+        newton_step = kkt_newton_step(q, qₖ₊₁, q̇, u, params, fpos, constraint, h)
         # @show newton_step
         step_change = norm(newton_step - old_step)
         old_step = newton_step
