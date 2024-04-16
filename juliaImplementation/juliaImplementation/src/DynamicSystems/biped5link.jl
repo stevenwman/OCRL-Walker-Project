@@ -254,16 +254,17 @@ function kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
 	return newton_step
 end
 
-function forward_dynamics(q, q̇, u, params, fpos, constraint, h, tol=1e-3, max_iter=50, verbose=true)
+function forward_dynamics(q, q̇, u, params, fpos, constraint, h, tol=1e-5, max_iter=50, verbose=true)
 	# solve the KKT system for the newton step
-	q_old = q
 	old_step = kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
+	# @show old_step
 	newton_step = old_step
 	for i = 1:max_iter-1
 		q̇ₖ₊₁ = newton_step[1:7]
-		q = q + q̇ₖ₊₁*h
+		qₖ₊₁ = q + q̇ₖ₊₁*h
 
-		newton_step = kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
+		newton_step = kkt_newton_step(qₖ₊₁, q̇, u, params, fpos, constraint, h)
+		# @show newton_step
 		step_change = norm(newton_step - old_step)
 		old_step = newton_step
 
