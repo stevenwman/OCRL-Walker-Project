@@ -232,12 +232,12 @@ function kkt_conditions(q, q̇, u, params, h, constraint, fpos)
     return kkt_conditions
 end
 
-function kkt_jacobian(q, qₖ₊₁, params, constraint, fpos, h)
+function kkt_jacobian(q, params, constraint, fpos, h)
     # returns the left hand side of the KKT system:
     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
     # [J(q)*h         0] [   λ] = [               -C(q)]
 
-    M = M_matrix(qₖ₊₁, params)
+    M = M_matrix(q, params)
     J = J_matrix(q, params, constraint, fpos)
 
     kkt_jac = [M   -J'*h;
@@ -245,24 +245,24 @@ function kkt_jacobian(q, qₖ₊₁, params, constraint, fpos, h)
     return kkt_jac
 end
 
-function kkt_newton_step(q, qₖ₊₁, q̇, u, params, fpos, constraint, h)
+function kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
     # solve the KKT system for the newton step
-    kkt_jac = kkt_jacobian(q, qₖ₊₁, params, constraint, fpos, h)
+    kkt_jac = kkt_jacobian(q, params, constraint, fpos, h)
     kkt_cond = kkt_conditions(q, q̇, u, params, h, constraint, fpos)
 
     newton_step = kkt_jac \ kkt_cond
     return newton_step
 end
 
-function forward_dynamics(q, q̇, u, params, fpos, constraint, h, tol=1e-7, max_iter=50, verbose=true)
+function forward_dynamics(q, q̇, u, params, fpos, constraint, h, tol=1e-9, max_iter=100, verbose=true)
     # solve the KKT system for the newton step
-    old_step = kkt_newton_step(q, q, q̇, u, params, fpos, constraint, h)
+    old_step = kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
     newton_step = old_step
     for i = 1:max_iter-1
         q̇ₖ₊₁ = newton_step[1:7]
         qₖ₊₁ = q + q̇ₖ₊₁*h
 
-        newton_step = kkt_newton_step(q, qₖ₊₁, q̇, u, params, fpos, constraint, h)
+        newton_step = kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
         # @show newton_step
         step_change = norm(newton_step - old_step)
         old_step = newton_step
