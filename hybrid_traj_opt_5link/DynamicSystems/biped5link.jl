@@ -205,7 +205,7 @@ function both_foot_constraint(q, params, fpos)
 end
 
 function J_matrix(q, params, constraint, fpos)
-    J  = ForwardDiff.jacobian(_q -> constraint(_q, params, fpos), q)
+    J  = FD.jacobian(_q -> constraint(_q, params, fpos), q)
     return J
 end
 
