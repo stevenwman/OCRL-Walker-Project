@@ -1,12 +1,12 @@
 # 5-link biped model in 2D, adapted from https://web.eecs.umich.edu/~grizzle/biped_book_web/
 # dynamics equation: M(q)q̈ + N(q,q') = B*u + J(q,q̇)ᵀλ
 
-params = (m1 = 1,  m2 = 1,  m3 = 1,  m4 = 1,  m5 = 1,  m6 = 1,
-                     l12 = 1, l23 = 1, l34 = 1, l45 = 1, l36 = 1, g = 9.81)
+# model = (m1 = 1,  m2 = 1,  m3 = 1,  m4 = 1,  m5 = 1,  m6 = 1,
+#          l12 = 1, l23 = 1, l34 = 1, l45 = 1, l36 = 1, g = 9.81)
 
 
-function biped5link_kinematics(q, params)
-    m1, m2, m3, m4, m5, m6, l12, l23, l34, l45, l36, g = params
+function biped5link_kinematics(q, model)
+    m1, m2, m3, m4, m5, m6, l12, l23, l34, l45, l36, g = model
     x, y, t1, t2, t3, t4, t5 = q
 
     r3 = [x y]
@@ -19,8 +19,8 @@ function biped5link_kinematics(q, params)
     return [r1; r2; r3; r4; r5; r6]
 end
 
-function M_matrix(q, params)
-    m1, m2, m3, m4, m5, m6, l12, l23, l34, l45, l36, g = params
+function M_matrix(q, model)
+    m1, m2, m3, m4, m5, m6, l12, l23, l34, l45, l36, g = model
     x, y, t1, t2, t3, t4, t5 = q
 
     # [  - m1 - m2 - m3 - m4 - m5 - m6,                                 
@@ -125,8 +125,8 @@ function M_matrix(q, params)
     return M
 end
 
-function N_matrix(q, q̇, params)
-    m1, m2, m3, m4, m5, m6, l12, l23, l34, l45, l36, g = params
+function N_matrix(q, q̇, model)
+    m1, m2, m3, m4, m5, m6, l12, l23, l34, l45, l36, g = model
     x, y, t1, t2, t3, t4, t5 = q
     xd, yd, t1d, t2d, t3d, t4d, t5d = q̇
      
@@ -156,10 +156,10 @@ function B_matrix()
     return B
 end
 
-function left_foot_constraint(q, params, fpos)
+function left_foot_constraint(q, model, fpos)
     f1posX, f1posY, f2posX, f2posY = fpos
 
-    r = biped5link_kinematics(q, params)
+    r = biped5link_kinematics(q, model)
     r1 = r[1,:]
 
     c1 = r1[1] - f1posX
@@ -172,10 +172,10 @@ function left_foot_constraint(q, params, fpos)
     return C
 end
 
-function right_foot_constraint(q, params, fpos)
+function right_foot_constraint(q, model, fpos)
     f1posX, f1posY, f2posX, f2posY = fpos
 
-    r = biped5link_kinematics(q, params)
+    r = biped5link_kinematics(q, model)
     r5 = r[5,:]
 
     c1 = 0
@@ -188,10 +188,10 @@ function right_foot_constraint(q, params, fpos)
     return C
 end
 
-function both_foot_constraint(q, params, fpos)
+function both_foot_constraint(q, model, fpos)
     f1posX, f1posY, f2posX, f2posY = fpos
 
-    r = biped5link_kinematics(q, params)
+    r = biped5link_kinematics(q, model)
     r1 = r[1,:]
     r5 = r[5,:]
 
@@ -204,13 +204,13 @@ function both_foot_constraint(q, params, fpos)
     return C
 end
 
-function J_matrix(q, params, constraint, fpos)
-    J  = FD.jacobian(_q -> constraint(_q, params, fpos), q)
+function J_matrix(q, model, constraint, fpos)
+    J  = FD.jacobian(_q -> constraint(_q, model, fpos), q)
     return J
 end
 
-function groundGuard(q, joint, params, ground_height)
-    joint_pos = biped5link_kinematics(q, params)[joint]
+function groundGuard(q, joint, model, ground_height)
+    joint_pos = biped5link_kinematics(q, model)[joint]
     joint_x = joint_pos[1]
     joint_y = joint_pos[2]
     impactCheck = joint_y - ground_height(joint_x)
@@ -218,51 +218,51 @@ function groundGuard(q, joint, params, ground_height)
 end
 
 # could be a misnomer, might just rename to "kkt_rhs"
-function kkt_conditions(q, q̇, u, params, h, constraint, fpos)
+function kkt_conditions(q, q̇, u, model, h, constraint, fpos)
     # rigth hand side of the KKT system:
     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
     # [J(q)*h         0] [   λ] = [               -C(q)]
 
-    M = M_matrix(q, params)
-    N = N_matrix(q, q̇, params)
+    M = M_matrix(q, model)
+    N = N_matrix(q, q̇, model)
     B = B_matrix()
 
     kkt_conditions = [M*q̇ + h*B*u - h*N;
-                      -constraint(q, params, fpos)]
+                      -constraint(q, model, fpos)]
     return kkt_conditions
 end
 
-function kkt_jacobian(q, params, constraint, fpos, h)
+function kkt_jacobian(q, model, constraint, fpos, h)
     # returns the left hand side of the KKT system:
     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
     # [J(q)*h         0] [   λ] = [               -C(q)]
 
-    M = M_matrix(q, params)
-    J = J_matrix(q, params, constraint, fpos)
+    M = M_matrix(q, model)
+    J = J_matrix(q, model, constraint, fpos)
 
     kkt_jac = [M   -J'*h;
                J*h zeros(size(J, 1), size(J, 1))]
     return kkt_jac
 end
 
-function kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
+function kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
     # solve the KKT system for the newton step
-    kkt_jac = kkt_jacobian(q, params, constraint, fpos, h)
-    kkt_cond = kkt_conditions(q, q̇, u, params, h, constraint, fpos)
+    kkt_jac = kkt_jacobian(q, model, constraint, fpos, h)
+    kkt_cond = kkt_conditions(q, q̇, u, model, h, constraint, fpos)
 
     newton_step = kkt_jac \ kkt_cond
     return newton_step
 end
 
-function forward_dynamics(q, q̇, u, params, fpos, constraint, h, tol=1e-9, max_iter=100, verbose=true)
+function forward_dynamics(q, q̇, u, model, fpos, constraint, h, tol=1e-9, max_iter=100, verbose=true)
     # solve the KKT system for the newton step
-    old_step = kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
+    old_step = kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
     newton_step = old_step
     for i = 1:max_iter-1
         q̇ₖ₊₁ = newton_step[1:7]
         qₖ₊₁ = q + q̇ₖ₊₁*h
 
-        newton_step = kkt_newton_step(q, q̇, u, params, fpos, constraint, h)
+        newton_step = kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
         # @show newton_step
         step_change = norm(newton_step - old_step)
         old_step = newton_step
@@ -280,7 +280,7 @@ function forward_dynamics(q, q̇, u, params, fpos, constraint, h, tol=1e-9, max_
     error("Newton iteration did not converge")
 end
 
-function simulate(q, q̇, u, params, fpos, constraint, h, T)
+function simulate(q, q̇, u, model, fpos, constraint, h, T)
     t = 0
     q_hist = zeros(T, 7)
     q̇_hist = zeros(T, 7)
@@ -292,7 +292,7 @@ function simulate(q, q̇, u, params, fpos, constraint, h, T)
     for i = 2:T
         print("t: $t \n")
         t += h
-        q, q̇, λ = forward_dynamics(q, q̇, u(t), params, fpos, constraint, h)
+        q, q̇, λ = forward_dynamics(q, q̇, u(t), model, fpos, constraint, h)
         q_hist[i, :] = q
         q̇_hist[i, :] = q̇
         λ_hist[i, :] = λ
