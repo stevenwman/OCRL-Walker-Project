@@ -10,6 +10,8 @@ function biped5link_kinematics(q, model)
     x, y, t1, t2, t3, t4, t5 = q
 
     r3 = [x y]
+    @show r3
+    @show l23*[cos(t2) sin(t2)]
     r2 = r3 + l23*[cos(t2) sin(t2)]
     r4 = r3 + l34*[cos(t4) sin(t4)]
     r1 = r2 + l12*[cos(t1) sin(t1)]

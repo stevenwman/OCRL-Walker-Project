@@ -34,36 +34,6 @@ function discrete_stance2_dynamics(model::NamedTuple, x::Vector, u::Vector, dt::
     return xₖ₊₁
 end
 
-# initial and goal states
-#determine the fixed joint angles
-theta_offset = 20 # determines, how spread out we want the legs
-
-q1 = 280 * (π/180)
-q2 = 300 * (π/180)
-q3 = 90 * (π/180)
-q4 = 250 * (π/180)
-q5 = 220 * (π/180)
-
-dq1 = 0
-dq2 = 0
-dq3 = 0
-dq4 = 0
-dq5 = 0
-
-#determine the fixed x and y positions
-x0 = 0
-total_link_length = 2 # assume each link is 1 for now, need to adjust later
-dy = 0.001 # add a small offset so that we're not in double stance to start off with
-y0 = total_link_length*(cos(20*pi/180)) + dy # y position of body
-dx0 = 0
-dy0 = 0
-
-
-xic = [x0; y0; q1; q2; q3; q4; q5; dx0; dyx0; dq1; dq2; dq3; dq4; dq5]
-
-dx = 5 # suppose our goal is to move like 5 meters forward
-xg = [x0 + dx; y0; q1; q2; q3; q4; q5; dx0; dyx0; dq1; dq2; dq3; dq4; dq5]
-
 
 function reference_trajectory(model, xic, xg, dt, N)
     # creates a reference Xref and Uref for the walker 
@@ -72,7 +42,7 @@ function reference_trajectory(model, xic, xg, dt, N)
     # horizonally at a constant velocity
     
     #assume Uref is just zeros for now, TODO: we can adjust this later to make it a sinusoial input or something
-    Uref = [[0; 0; 0] for i = 1:(N-1)]
+    Uref = [[0; 0; 0; 0] for i = 1:(N-1)]
     
     Xref = [zeros(14) for i = 1:N]
     
