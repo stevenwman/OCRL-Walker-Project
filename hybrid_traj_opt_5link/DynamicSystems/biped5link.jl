@@ -179,8 +179,8 @@ function right_foot_constraint(q, model, fpos)
 
     c1 = 0
     c2 = 0
-    c3 = r2[1] - f2posX
-    c4 = r2[2] - f2posY
+    c3 = r5[1] - f2posX
+    c4 = r5[2] - f2posY
 
     # C = [c1; c2; c3; c4]
     C = [c3; c4]

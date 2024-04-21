@@ -8,7 +8,7 @@ function discrete_stance1_dynamics(model::NamedTuple, x::Vector, u::Vector, dt::
     
     q, q̇ = x[1:7], x[8:14]
     r = biped5link_kinematics(q, model)
-    fpos = r[1,:]
+    fpos = [r[1,:]; r[5,:]]
     newton_step = kkt_newton_step(q, q̇, u, model, fpos, left_foot_constraint, dt)
     q̇ₖ₊₁ = newton_step[1:7]
     qₖ₊₁ = q + q̇ₖ₊₁*dt
@@ -25,7 +25,7 @@ function discrete_stance2_dynamics(model::NamedTuple, x::Vector, u::Vector, dt::
     
     q, q̇ = x[1:7], x[8:14]
     r = biped5link_kinematics(q, model)
-    fpos = r[5,:]
+    fpos = [r[1,:]; r[5,:]]
     newton_step = kkt_newton_step(q, q̇, u, model, fpos, right_foot_constraint, dt)
     q̇ₖ₊₁ = newton_step[1:7]
     qₖ₊₁ = q + q̇ₖ₊₁*dt
