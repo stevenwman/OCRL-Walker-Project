@@ -20,7 +20,9 @@ function animate_walker(state_matrix, params, guard=nothing, saveAnimation=true)
     """
 
     # extract timesteps
-    N = size(state_matrix,2)
+
+
+    N = size(state_matrix)[1]
 
     # define guard
     if guard === nothing
@@ -42,7 +44,8 @@ function animate_walker(state_matrix, params, guard=nothing, saveAnimation=true)
     for i in 1:timesteps
 
         #extract joint positions at i-th timestep
-        q_i = state_matrix[1:7,i]
+        q_i = state_matrix[i]
+
         joint_pos = biped5link_kinematics(q_i, params)
         r1, r2, r3, r4, r5, r6 = eachrow(joint_pos)
 

@@ -83,9 +83,9 @@ function reference_trajectory(model, xic, xg, dt, N, M1, dx, tf)
     #now construct the Xref vector of vectors
     for i = 2:(N-1) 
         if i in M1
-            Xref[i] = [xs[i], y0, q1, q2, q3, q4, q5, horiz_v, 0, 0, 0 ,0, 0, 0]
+            Xref[i] = [x0 + horiz_v*i*dt , y0, q1, q2, q3, q4, q5, horiz_v, 0, 0, 0 ,0, 0, 0]
         else
-            Xref[i] = [xs[i], y0, q5, q4, q3, q2, q1, horiz_v, 0, 0, 0 ,0, 0, 0]
+            Xref[i] = [x0 + horiz_v*i*dt , y0, q5, q4, q3, q2, q1, horiz_v, 0, 0, 0 ,0, 0, 0]
         end
     end
         
