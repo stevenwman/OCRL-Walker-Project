@@ -5,7 +5,7 @@
 #          l12 = 1, l23 = 1, l34 = 1, l45 = 1, l36 = 1, g = 9.81)
 
 
-function biped5link_kinematics(q::Vector, model::NamedTuple)
+function biped5link_kinematics(q, model)
     m1, m2, m3, m4, m5, m6, l12, l23, l34, l45, l36, g = model
     x, y, t1, t2, t3, t4, t5 = q
     r3 = [x y]
