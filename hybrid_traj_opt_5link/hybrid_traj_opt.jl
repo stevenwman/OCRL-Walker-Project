@@ -136,14 +136,17 @@ function walker_stance_constraint(params::NamedTuple, Z::Vector)::Vector
         qkp1 = xkp1[1:7]
         r = biped5link_kinematics(q, model)
         rkp1 = biped5link_kinematics(qkp1, model)
-        if (k in M1)
+        if (k in J1) || (k in J2)
+            c[i] = r[1,2]
+            c[i+1] = r[5,2]
+        elseif (k in M1)
             foot_diff = r[1,:] - rkp1[1,:]
             c[i] = foot_diff[1]
-            c[i+1] = foot_diff[2]
+            c[i+1] = r[1,2]
         elseif (k in M2)
             foot_diff = r[5,:] - rkp1[5,:]
             c[i] = foot_diff[1]
-            c[i+1] = foot_diff[2]
+            c[i+1] = r[5,2]
         end
     end
 
@@ -172,7 +175,7 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
     idx, N, dt = params.idx, params.N, params.dt
     M1, M2 = params.M1, params.M2 
     
-    cons = 2
+    cons = 8
 
     # create c in a ForwardDiff friendly way (check HW0)
     c = zeros(eltype(Z), cons*N)
@@ -185,10 +188,16 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
         xk = Z[idx.x[Int((k+cons-1)/cons)]]
         r = biped5link_kinematics(xk[1:7], params.model)
         r1y = r[1,2]
+        r2y = r[2,2]
+        r4y = r[4,2]
         r5y = r[5,2]
-        c[k:k+1] = vcat([r1y; r5y]...)
-        # c[k+4] = xk[3] - xk[4]
-        # c[k+5] = xk[7] - xk[6]
+        c[k:k+3] = vcat([r1y; r2y; r4y; r5y]...)
+
+        c[k+4] = -(xk[3] - xk[4])
+        c[k+5] = -(xk[7] - xk[6])
+
+        c[k+6] = xk[5] - (π/2 - π/3) 
+        c[k+7] = (π/2 + π/3) - xk[5]
     end
     return c
 end
@@ -196,7 +205,7 @@ end
 ##
 
 # dynamics parameters 
-model = (m1 = .1,  m2 = .1,  m3 = 1,  m4 = .1,  m5 = .1,  m6 = .1,
+model = (m1 = .5,  m2 = .5,  m3 = 1,  m4 = .5,  m5 = .5,  m6 = .01,
             l12 = 1, l23 = 1, l34 = 1, l45 = 1, l36 = 1, g = 9.81)
 
 # problem size 
@@ -227,7 +236,7 @@ dx0 = dy0 = dq1 = dq2 = dq3 = dq4 = dq5 = 0
 xic = [ x0;  y0;  q1;  q2;  q3;  q4;  q5; 
         dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 # dx = 5 # suppose our goal is to move like 5 meters forward
-dx = 2 # suppose our goal is to move like 5 meters forward
+dx = 3 # suppose our goal is to move like 5 meters forward
 
 # D = [x0 + dx, y0]
 # D_norm = norm(D)
@@ -238,21 +247,21 @@ dx = 2 # suppose our goal is to move like 5 meters forward
 # C = acos( (D_norm^2 + model.l23^2 - model.l12^2) / (2 * D_norm * model.l23) )
 # q2 = C + π + ϕ
 
-# xg = [x0 + dx;  y0;  q1;  q2;  q3;  q4;  q5; 
-#             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
+xg = [x0 + dx;  y0;  q1;  q2;  q3;  q4;  q5; 
+            dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
-xg = [x0 + dx;  y0;  q5;  q4;  q3;  q2;  q1; 
-          dx0; dy0; dq1; dq2; dq3; dq4; dq5]
+# xg = [x0 + dx;  y0;  q5;  q4;  q3;  q2;  q1; 
+#           dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
 # index sets 
-M1 = vcat([ (i-1)*10      .+ (1:5)   for i = 1:5]...)
-M2 = vcat([((i-1)*10 + 5) .+ (1:5)   for i = 1:4]...)
-J1 = [5,15,25,35]
-J2 = [10,20,30,40]
-# M1 = vcat([1:22]...)
-# M2 = vcat([23:45]...)
-# J1 = [46]
-# J2 = [46] 
+# M1 = vcat([ (i-1)*10      .+ (1:5)   for i = 1:5]...)
+# M2 = vcat([((i-1)*10 + 5) .+ (1:5)   for i = 1:4]...)
+# J1 = [5,15,25,35]
+# J2 = [10,20,30,40]
+M1 = vcat([1:11,24:35]...)
+M2 = vcat([12:23,36:45]...)
+J1 = [11, 35]
+J2 = [23, 45] 
 
 # reference trajectory 
 Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
@@ -262,9 +271,10 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 # LQR cost function (tracking Xref, Uref)
 # Q = diagm([1; 10; fill(1.0, 5); 1; 10; fill(1.0, 5)]);
 # TODO: change this ↓ to maximize cg position along trajectory
-Q = diagm(fill(1.0,14))
+Q = diagm(fill(10.0,14))
+Q[2,2] = 100
 R = diagm(fill(1e-3,4))
-Qf = 1*Q;
+Qf = 10*Q;
 
 # create indexing utilities 
 idx = create_idx(nx,nu,N)
@@ -300,8 +310,10 @@ x_u =  Inf*ones(idx.nz)
 
 # TODO: inequality constraint bounds
 
-c_l = 0*ones(2*N)
-c_u = Inf*ones(2*N)
+cons = 8
+
+c_l = 0*ones(cons*N)
+c_u = Inf*ones(cons*N)
 
 # TODO: initial guess, initialize z0 with the reference Xref, Uref 
 z0 = zeros(idx.nz)
