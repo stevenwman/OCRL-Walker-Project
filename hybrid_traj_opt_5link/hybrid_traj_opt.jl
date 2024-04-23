@@ -188,7 +188,7 @@ end
 ##
 
 # dynamics parameters 
-model = (m1 = 1,  m2 = 1,  m3 = 1,  m4 = 1,  m5 = 1,  m6 = 1,
+model = (m1 = .1,  m2 = .1,  m3 = 1,  m4 = .1,  m5 = .1,  m6 = .1,
             l12 = 1, l23 = 1, l34 = 1, l45 = 1, l36 = 1, g = 9.81)
 
 # problem size 
@@ -253,7 +253,7 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 # LQR cost function (tracking Xref, Uref)
 # Q = diagm([1; 10; fill(1.0, 5); 1; 10; fill(1.0, 5)]);
 # TODO: change this ↓ to maximize cg position along trajectory
-Q = diagm(fill(100.0,14))
+Q = diagm(fill(1.0,14))
 R = diagm(fill(1e-3,4))
 Qf = 1*Q;
 
