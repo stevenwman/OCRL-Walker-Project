@@ -125,17 +125,25 @@ function walker_stance_constraint(params::NamedTuple, Z::Vector)::Vector
     model = params.model 
 
     # create c in a ForwardDiff friendly way (check HW0)
-    c = zeros(eltype(Z), N)
+    c = zeros(eltype(Z), 2*N)
     
     # TODO: add walker stance constraints (constraints 7-8 in the opti problem)
-    for k = 1:N 
+    for i = 1:2:2*(N-1) 
+        k = Int((i+1)/2)
         x = Z[idx.x[k]]
+        xkp1 = Z[idx.x[k+1]]
         q = x[1:7]
+        qkp1 = xkp1[1:7]
         r = biped5link_kinematics(q, model)
+        rkp1 = biped5link_kinematics(qkp1, model)
         if (k in M1)
-            c[k] = r[1,2]
+            foot_diff = r[1,:] - rkp1[1,:]
+            c[i] = foot_diff[1]
+            c[i+1] = foot_diff[2]
         elseif (k in M2)
-            c[k] = r[5,2]
+            foot_diff = r[5,:] - rkp1[5,:]
+            c[i] = foot_diff[1]
+            c[i+1] = foot_diff[2]
         end
     end
 
@@ -163,24 +171,24 @@ end
 function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
     idx, N, dt = params.idx, params.N, params.dt
     M1, M2 = params.M1, params.M2 
-        
+    
+    cons = 2
+
     # create c in a ForwardDiff friendly way (check HW0)
-    c = zeros(eltype(Z), 6*N)
+    c = zeros(eltype(Z), cons*N)
     
     # TODO: add the length constraints shown in constraints (9-10)
     # there are 2*N constraints here 
     
     iter = 1 
-    for k = 1:6:6*N
-        xk = Z[idx.x[Int((k+5)/6)]]
+    for k = 1:cons:cons*N
+        xk = Z[idx.x[Int((k+cons-1)/cons)]]
         r = biped5link_kinematics(xk[1:7], params.model)
-        r2y = r[2,2]
-        r3y = r[3,2]
-        r4y = r[4,2]
-        r6y = r[6,2]
-        c[k:k+3] = vcat([r2y; r3y; r4y; r6y]...)
-        c[k+4] = xk[3] - xk[4]
-        c[k+5] = xk[7] - xk[6]
+        r1y = r[1,2]
+        r5y = r[5,2]
+        c[k:k+1] = vcat([r1y; r5y]...)
+        # c[k+4] = xk[3] - xk[4]
+        # c[k+5] = xk[7] - xk[6]
     end
     return c
 end
@@ -219,31 +227,32 @@ dx0 = dy0 = dq1 = dq2 = dq3 = dq4 = dq5 = 0
 xic = [ x0;  y0;  q1;  q2;  q3;  q4;  q5; 
         dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 # dx = 5 # suppose our goal is to move like 5 meters forward
-dx = 0.5 # suppose our goal is to move like 5 meters forward
+dx = 2 # suppose our goal is to move like 5 meters forward
 
-D = [x0 + dx, y0]
-D_norm = norm(D)
-ϕ = atan(D[2], D[1])
+# D = [x0 + dx, y0]
+# D_norm = norm(D)
+# ϕ = atan(D[2], D[1])
 
-A = acos( (D_norm^2 + model.l12^2 - model.l23^2) / (2 * D_norm * model.l12) )
-q1 = ϕ + π - A
-C = acos( (D_norm^2 + model.l23^2 - model.l12^2) / (2 * D_norm * model.l23) )
-q2 = C + π + ϕ
+# A = acos( (D_norm^2 + model.l12^2 - model.l23^2) / (2 * D_norm * model.l12) )
+# q1 = ϕ + π - A
+# C = acos( (D_norm^2 + model.l23^2 - model.l12^2) / (2 * D_norm * model.l23) )
+# q2 = C + π + ϕ
 
-xg = [x0 + dx;  y0;  q1;  q2;  q3;  q4;  q5; 
-            dx0; dy0; dq1; dq2; dq3; dq4; dq5]
-# xg = [x0 + dx;  y0;  q5;  q4;  q3;  q2;  q1+; 
+# xg = [x0 + dx;  y0;  q1;  q2;  q3;  q4;  q5; 
 #             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
+xg = [x0 + dx;  y0;  q5;  q4;  q3;  q2;  q1; 
+          dx0; dy0; dq1; dq2; dq3; dq4; dq5]
+
 # index sets 
-# M1 = vcat([ (i-1)*10      .+ (1:5)   for i = 1:5]...)
-# M2 = vcat([((i-1)*10 + 5) .+ (1:5)   for i = 1:4]...)
-# J1 = [5,15,25,35]
-# J2 = [10,20,30,40]
-M1 = vcat([1:45]...)
-M2 = [46]
-J1 = [46]
-J2 = [46] 
+M1 = vcat([ (i-1)*10      .+ (1:5)   for i = 1:5]...)
+M2 = vcat([((i-1)*10 + 5) .+ (1:5)   for i = 1:4]...)
+J1 = [5,15,25,35]
+J2 = [10,20,30,40]
+# M1 = vcat([1:22]...)
+# M2 = vcat([23:45]...)
+# J1 = [46]
+# J2 = [46] 
 
 # reference trajectory 
 Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
@@ -290,8 +299,9 @@ x_u =  Inf*ones(idx.nz)
 # end
 
 # TODO: inequality constraint bounds
-c_l = -Inf*ones(6*N)
-c_u = Inf*ones(6*N)
+
+c_l = 0*ones(2*N)
+c_u = Inf*ones(2*N)
 
 # TODO: initial guess, initialize z0 with the reference Xref, Uref 
 z0 = zeros(idx.nz)
