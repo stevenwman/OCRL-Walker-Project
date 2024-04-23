@@ -187,22 +187,6 @@ function right_foot_constraint(q, model, fpos)
     return C
 end
 
-function both_foot_constraint(q, model, fpos)
-    f1posX, f1posY, f2posX, f2posY = fpos
-
-    r = biped5link_kinematics(q, model)
-    r1 = r[1,:]
-    r5 = r[5,:]
-
-    c1 = r1[1] - f1posX
-    c2 = r1[2] - f1posY
-    c3 = r5[1] - f2posX
-    c4 = r5[2] - f2posY
-
-    C = [c1; c2; c3; c4]
-    return C
-end
-
 function J_matrix(q, model, constraint, fpos)
     J  = FD.jacobian(_q -> constraint(_q, model, fpos), q)
     return J
