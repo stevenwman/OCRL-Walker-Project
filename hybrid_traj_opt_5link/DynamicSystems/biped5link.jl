@@ -237,6 +237,17 @@ function kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
     return newton_step
 end
 
+function unconstrained_dynamics(q, q̇, u, model, h)
+    M = M_matrix(q, model)
+    N = N_matrix(q, q̇, model)
+    B = B_matrix()
+
+    q̇ₖ₊₁ = M \ (M*q̇ + h*B*u - h*N)
+    qₖ₊₁ = q + q̇ₖ₊₁*h 
+    xₖ₊₁ = [qₖ₊₁; q̇ₖ₊₁]
+    return xₖ₊₁
+end
+
 function forward_dynamics(q, q̇, u, model, fpos, constraint, h, tol=1e-9, max_iter=100, verbose=true)
     # solve the KKT system for the newton step
     old_step = kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
