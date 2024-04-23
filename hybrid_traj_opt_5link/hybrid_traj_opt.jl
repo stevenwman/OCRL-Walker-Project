@@ -96,15 +96,22 @@ function walker_dynamics_constraints(params::NamedTuple, Z::Vector)::Vector
         #     c[idx.c[k]] = discrete_stance2_dynamics(model, xk, uk, dt) - xkp1 
         # end
 
-        if (k in J1)
-            c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1
-        elseif (k in J2)
-            c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1
-        elseif (k in M1) # (not in J1) is implied 
-            c[idx.c[k]] = discrete_stance1_dynamics(model, xk, uk, dt) - xkp1 
+        # if (k in J1)
+        #     c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1
+        # elseif (k in J2)
+        #     c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1
+        # elseif (k in M1) # (not in J1) is implied 
+        #     c[idx.c[k]] = discrete_stance1_dynamics(model, xk, uk, dt) - xkp1 
+        # elseif (k in M2) # (not in J1) is implied 
+        #     c[idx.c[k]] = discrete_stance2_dynamics(model, xk, uk, dt) - xkp1 
+        # end
+
+        if (k in M1) # (not in J1) is implied 
+            c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1 
         elseif (k in M2) # (not in J1) is implied 
-            c[idx.c[k]] = discrete_stance2_dynamics(model, xk, uk, dt) - xkp1 
+            c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1 
         end
+
     end
 
     return c 
@@ -149,7 +156,7 @@ function walker_equality_constraint(params::NamedTuple, Z::Vector)::Vector
       Z[idx.x[1]] - xic;
       Z[idx.x[N]] - xg;
       walker_dynamics_constraints(params, Z);
-      # walker_stance_constraint(params, Z)
+      walker_stance_constraint(params, Z)
     ]
 end
 
@@ -246,7 +253,7 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 # LQR cost function (tracking Xref, Uref)
 # Q = diagm([1; 10; fill(1.0, 5); 1; 10; fill(1.0, 5)]);
 # TODO: change this ↓ to maximize cg position along trajectory
-Q = diagm(fill(1.0,14))
+Q = diagm(fill(100.0,14))
 R = diagm(fill(1e-3,4))
 Qf = 1*Q;
 
