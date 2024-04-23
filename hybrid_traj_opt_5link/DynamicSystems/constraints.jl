@@ -35,7 +35,7 @@ function discrete_stance2_dynamics(model::NamedTuple, x::Vector, u::Vector, dt::
 end
 
 
-function reference_trajectory(model, xic, xg, dt, N)
+function reference_trajectory(model, xic, xg, dt, N, M1, dx, tf)
     # creates a reference Xref and Uref for the walker 
     # for the reference, we're going to assume the walker is a rigid
     # body, and then we linearly interpolate a trajectory that has it move
@@ -56,23 +56,37 @@ function reference_trajectory(model, xic, xg, dt, N)
     xs = range(x_start, x_end, length = N)
 
     #determine the fixed joint angles
-    theta_offset = 20 # determines, how spread out we want the legs
-    q1 = (270+theta_offset)*pi/180
-    q2 = (270+theta_offset)*pi/180
-    q3 = pi/2 
-    q4 = (270-theta_offset)*pi/180
-    q5 = (270-theta_offset)*pi/180
+    # theta_offset = 20 # determines, how spread out we want the legs
+    # q1 = (270+theta_offset)*pi/180
+    # q2 = (270+theta_offset)*pi/180
+    # q3 = pi/2 
+    # q4 = (270-theta_offset)*pi/180
+    # q5 = (270-theta_offset)*pi/180
 
-    #determine the fixed y-height
-    total_link_length = 2 # assume each link is 1 for now, need to adjust later
-    ys = total_link_length*(cos(20*pi/180)) # y position of body
+    q1 = 280 * (π/180)
+    q2 = 300 * (π/180)
+    q3 = 90 * (π/180)
+    q4 = 250 * (π/180)
+    q5 = 220 * (π/180)
+
+    x0 = - model.l23 * cos(q2) - model.l12 * cos(q1)
+    y0 = - model.l23 * sin(q2) - model.l12 * sin(q1)
+
+
+    # #determine the fixed y-height
+    # total_link_length = 2 # assume each link is 1 for now, need to adjust later
+    # ys = total_link_length*(cos(20*pi/180)) # y position of body
 
     #determine the fixed x-horizontal velocity
-    horiz_v = (3/N)/dt 
+    horiz_v = x_end / tf
     
     #now construct the Xref vector of vectors
     for i = 2:(N-1) 
-        Xref[i] = [xs[i], ys, q1, q2, q3, q4, q5, horiz_v, 0, 0, 0 ,0, 0, 0]
+        if i in M1
+            Xref[i] = [xs[i], y0, q1, q2, q3, q4, q5, horiz_v, 0, 0, 0 ,0, 0, 0]
+        else
+            Xref[i] = [xs[i], y0, q5, q4, q3, q2, q1, horiz_v, 0, 0, 0 ,0, 0, 0]
+        end
     end
         
     return Xref, Uref
