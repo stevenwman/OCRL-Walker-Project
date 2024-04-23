@@ -148,7 +148,7 @@ function walker_equality_constraint(params::NamedTuple, Z::Vector)::Vector
     [   
       Z[idx.x[1]] - xic;
       Z[idx.x[N]] - xg;
-      # walker_dynamics_constraints(params, Z);
+      walker_dynamics_constraints(params, Z);
       # walker_stance_constraint(params, Z)
     ]
 end
@@ -213,18 +213,30 @@ xic = [ x0;  y0;  q1;  q2;  q3;  q4;  q5;
         dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 # dx = 5 # suppose our goal is to move like 5 meters forward
 dx = 0.5 # suppose our goal is to move like 5 meters forward
+
+D = [x0 + dx, y0]
+D_norm = norm(D)
+ϕ = atan(D[2], D[1])
+
+A = acos( (D_norm^2 + model.l12^2 - model.l23^2) / (2 * D_norm * model.l12) )
+q1 = ϕ + π - A
+C = acos( (D_norm^2 + model.l23^2 - model.l12^2) / (2 * D_norm * model.l23) )
+q2 = C + π + ϕ
+
 xg = [x0 + dx;  y0;  q1;  q2;  q3;  q4;  q5; 
             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
+# xg = [x0 + dx;  y0;  q5;  q4;  q3;  q2;  q1+; 
+#             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
 # index sets 
 # M1 = vcat([ (i-1)*10      .+ (1:5)   for i = 1:5]...)
 # M2 = vcat([((i-1)*10 + 5) .+ (1:5)   for i = 1:4]...)
 # J1 = [5,15,25,35]
 # J2 = [10,20,30,40]
-M1 = [1:45]
+M1 = vcat([1:45]...)
 M2 = [46]
 J1 = [46]
-J1 = [46] 
+J2 = [46] 
 
 # reference trajectory 
 Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
@@ -300,7 +312,6 @@ U = [Z[idx.u[i]] for i = 1:(N-1)]
 # ------------plotting--------------
 Xm = hcat(X...)
 Um = hcat(U...)
-
 
 animate_walker(X, model)
 

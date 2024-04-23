@@ -74,10 +74,12 @@ function reference_trajectory(model, xic, xg, dt, N, M1, tf)
     horiz_v = (x_end - x_start)/ tf
     #now construct the Xref vector of vectors
     for i = 2:(N-1) 
-        if i in M1 && i < N/2
-            Xref[i] = [x0 + horiz_v*i*dt , y0, q1, q2, q3, q4, q5, horiz_v, 0, 0, 0 ,0, 0, 0]
+        if i in M1 && i > N/2
+            Xref[i] = xg
+            # Xref[i] = [x0 + horiz_v*i*dt , y0, q1, q2, q3, q4, q5, horiz_v, 0, 0, 0 ,0, 0, 0]
         else
-            Xref[i] = [x0 + horiz_v*i*dt , y0, q5, q4, q3, q2, q1, horiz_v, 0, 0, 0 ,0, 0, 0]
+            Xref[i] = xic
+            # Xref[i] = [x0 + horiz_v*i*dt , y0, q5, q4, q3, q2, q1, horiz_v, 0, 0, 0 ,0, 0, 0]
         end
     end
         
