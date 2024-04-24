@@ -159,7 +159,7 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
     idx, N, dt = params.idx, params.N, params.dt
     M1, M2 = params.M1, params.M2 
     
-    cons = 4
+    cons = 6
 
     # create c in a ForwardDiff friendly way (check HW0)
     c = zeros(eltype(Z), cons*N)
@@ -179,8 +179,8 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
 
         px, py, θ1, θ2, θ3, θ4, θ5 = xk[1:7]
 
-        # c[k+4] = θ2 - θ1
-        # c[k+5] = θ4 - θ5
+        c[k+4] = θ2 - θ1
+        c[k+5] = θ4 - θ5
 
         # c[k+8] = θ1 - (θ2 - π)
         # c[k+9] = θ5 - (θ4 - π)
@@ -226,7 +226,7 @@ dx0 = dy0 = dq1 = dq2 = dq3 = dq4 = dq5 = 0
 xic = [ x0;  y0;  q1;  q2;  q3;  q4;  q5; 
         dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 # dx = 5 # suppose our goal is to move like 5 meters forward
-dx = 1.5 # suppose our goal is to move like 5 meters forward
+dx = 5 # suppose our goal is to move like 5 meters forward
 
 # D = [x0 + dx, y0]
 # D_norm = norm(D)
@@ -237,25 +237,30 @@ dx = 1.5 # suppose our goal is to move like 5 meters forward
 # C = acos( (D_norm^2 + model.l23^2 - model.l12^2) / (2 * D_norm * model.l23) )
 # q2 = C + π + ϕ
 
-# xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q1;  q2;  q3;  q4;  q5; 
-#             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
-
-xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q5;  q4;  q3;  q2;  q1; 
+xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q1;  q2;  q3;  q4;  q5; 
             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
+
+# xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q5;  q4;  q3;  q2;  q1; 
+#             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
 # xg = [x0 + dx;  y0;  q5;  q4;  q3;  q2;  q1; 
 #           dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
 # index sets 
-M1 = vcat([1:20, 41:60, 81:100]...)
-M2 = vcat([21:40, 61:80, 101:121]...)
-J1 = [20, 60, 100]
-J2 = [40, 80] 
+# M1 = vcat([1:20, 41:60, 81:100]...)
+# M2 = vcat([21:40, 61:80, 101:121]...)
+# J1 = [20, 60, 100]
+# J2 = [40, 80] 
 
-M1 = vcat([1:30]...)
-M2 = vcat([31:61]...)
-J1 = [30]
-J2 = [62] 
+M1 = vcat([1:10,  26:38, 53:61]...)
+M2 = vcat([11:25, 39:52]...)
+J1 = [10, 38]
+J2 = [25, 52] 
+
+# M1 = vcat([1:30]...)
+# M2 = vcat([31:61]...)
+# J1 = [30]
+# J2 = [62] 
 
 # reference trajectory 
 Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
@@ -296,7 +301,7 @@ x_u =  Inf*ones(idx.nz)
 # end
 
 # TODO: inequality constraint bounds
-cons = 4
+cons = 6
 c_l = 0*ones(cons*N)
 # c_l = -Inf*ones(cons*N)
 c_u = Inf*ones(cons*N)

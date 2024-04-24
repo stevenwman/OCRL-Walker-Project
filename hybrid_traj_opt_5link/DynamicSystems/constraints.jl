@@ -57,17 +57,17 @@ function height_stairs(x_distance)
 # function to increase stairs step size by 20cm, for every 20cm horizontal distance
     
     # step height increase occurs every 20 cm of horizontal distance traveled
-    step_height_increase = 1  # 20 cm in m
-    # calculate the number of step height increases based on the x_distance traveled
-    num_increases = floor(x_distance / step_height_increase)
+    step_height_increase = 0.25  # 20 cm in m
+    # calculate the number of step height increases based on the x_distance traveled  
+    num_increases = floor(x_distance / 4 / step_height_increase)
     # calculate the current height of the staircase
 
     if x_distance < 0.2
         height = 0
-    elseif x_distance < 1.5
-        height = num_increases * step_height_increase / 2
-    else
-        height = 0.5
+    elseif x_distance < 3.6
+        height = num_increases * step_height_increase
+    else 
+        height = 0.75
     end
 
     # height = 0
