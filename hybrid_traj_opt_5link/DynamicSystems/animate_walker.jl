@@ -57,7 +57,8 @@ function animate_walker(state_matrix, params, guard=nothing, saveAnimation=true)
 
         # calc guard and plot
         xs = l_bound:0.01:r_bound
-        ys = -slope * xs # y = -m*x, passing through (0, 0)
+        # ys = -slope * xs # y = -m*x, passing through (0, 0)
+        ys = height_stairs.(xs)
         plot(xs, ys, linestyle=:solid, label="Ground", color="black")
 
         # now plot leg1

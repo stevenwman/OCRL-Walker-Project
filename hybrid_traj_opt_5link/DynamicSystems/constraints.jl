@@ -38,11 +38,15 @@ function reference_trajectory(model, xic, xg, dt, N, M1, tf)
     #determine the fixed x-horizontal velocity
     horiz_v = (x_end - x_start)/ tf
     #now construct the Xref vector of vectors
-    for i = 2:(N-1) 
+    for i = 2:(N-1)
+        new_x = x0 + horiz_v*i*dt
+        q = [new_x, y0, q1, q2, q3, q4, q5]
+        r = biped5link_kinematics(q, model)
+        new_y = y0 + height_stairs(r[1,1])
         if i in M1
-            Xref[i] = [x0 + horiz_v*i*dt , y0, q1, q2, q3, q4, q5, horiz_v, 0, 0, 0 ,0, 0, 0]
+            Xref[i] = [new_x , new_y, q1, q2, q3, q4, q5, 0, 0, 0, 0 ,0, 0, 0]
         else
-            Xref[i] = [x0 + horiz_v*i*dt , y0, q5, q4, q3, q2, q1, horiz_v, 0, 0, 0 ,0, 0, 0]
+            Xref[i] = [new_x , new_y, q5, q4, q3, q2, q1, 0, 0, 0, 0 ,0, 0, 0]
         end
     end
         
@@ -53,20 +57,20 @@ function height_stairs(x_distance)
 # function to increase stairs step size by 20cm, for every 20cm horizontal distance
     
     # step height increase occurs every 20 cm of horizontal distance traveled
-    step_height_increase = 0.2  # 20 cm in m
+    step_height_increase = 1  # 20 cm in m
     # calculate the number of step height increases based on the x_distance traveled
     num_increases = floor(x_distance / step_height_increase)
     # calculate the current height of the staircase
 
     if x_distance < 0.2
         height = 0
-    elseif x_distance < 0.4
-        height = num_increases * step_height_increase
+    elseif x_distance < 3
+        height = num_increases * step_height_increase / 2
     else
-        height = 0.4
+        height = 1.5
     end
 
-    height = 0
+    # height = 0
 
     return height
 end

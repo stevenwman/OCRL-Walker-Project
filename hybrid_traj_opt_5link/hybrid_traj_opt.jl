@@ -151,7 +151,7 @@ function walker_equality_constraint(params::NamedTuple, Z::Vector)::Vector
       Z[idx.x[1]] - xic;
       Z[idx.x[N]] - xg;
       walker_dynamics_constraints(params, Z);
-      walker_stance_constraint(params, Z)
+    #   walker_stance_constraint(params, Z)
     ]
 end
 
@@ -237,7 +237,7 @@ dx = 5 # suppose our goal is to move like 5 meters forward
 # C = acos( (D_norm^2 + model.l23^2 - model.l12^2) / (2 * D_norm * model.l23) )
 # q2 = C + π + ϕ
 
-xg = [x0 + dx;  y0;  q1;  q2;  q3;  q4;  q5; 
+xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q1;  q2;  q3;  q4;  q5; 
             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
 # xg = [x0 + dx;  y0;  q5;  q4;  q3;  q2;  q1; 
@@ -258,7 +258,7 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 # Q = diagm([1; 10; fill(1.0, 5); 1; 10; fill(1.0, 5)]);
 # TODO: change this ↓ to maximize cg position along trajectory
 Q = diagm(fill(1.0,14))
-Q[2,2] = 100
+# Q[2,2] = 100
 R = diagm(fill(1e-3,4))
 Qf = 1*Q;
 
@@ -290,6 +290,7 @@ x_u =  Inf*ones(idx.nz)
 # TODO: inequality constraint bounds
 cons = 10
 c_l = 0*ones(cons*N)
+# c_l = -Inf*ones(cons*N)
 c_u = Inf*ones(cons*N)
 
 # TODO: initial guess, initialize z0 with the reference Xref, Uref 
