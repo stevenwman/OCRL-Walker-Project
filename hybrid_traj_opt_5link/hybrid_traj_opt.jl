@@ -175,7 +175,7 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
     idx, N, dt = params.idx, params.N, params.dt
     M1, M2 = params.M1, params.M2 
     
-    cons = 4
+    cons = 10
 
     # create c in a ForwardDiff friendly way (check HW0)
     c = zeros(eltype(Z), cons*N)
@@ -195,14 +195,14 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
 
         px, py, θ1, θ2, θ3, θ4, θ5 = xk[1:7]
 
-        # c[k+4] = θ2 - θ1
-        # c[k+5] = θ4 - θ5
+        c[k+4] = θ2 - θ1
+        c[k+5] = θ4 - θ5
 
-        # c[k+8] = θ1 - (θ2 - π) - π/6
-        # c[k+9] = θ5 - (θ4 - π) - π/6
+        c[k+8] = θ1 - (θ2 - π)
+        c[k+9] = θ5 - (θ4 - π)
 
-        # c[k+6] = θ3 - (π/2 - π/6) 
-        # c[k+7] = (π/2 + π/6) - θ3
+        c[k+6] = θ3 - (π/2 - π/6) 
+        c[k+7] = (π/2 + π/6) - θ3
     end
     return c
 end
@@ -241,38 +241,38 @@ dx0 = dy0 = dq1 = dq2 = dq3 = dq4 = dq5 = 0
 xic = [ x0;  y0;  q1;  q2;  q3;  q4;  q5; 
         dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 # dx = 5 # suppose our goal is to move like 5 meters forward
-dx = 0.25 # suppose our goal is to move like 5 meters forward
+dx = 1 # suppose our goal is to move like 5 meters forward
 
-D = [x0 + dx, y0]
-D_norm = norm(D)
-ϕ = atan(D[2], D[1])
+# D = [x0 + dx, y0]
+# D_norm = norm(D)
+# ϕ = atan(D[2], D[1])
 
-A = acos( (D_norm^2 + model.l12^2 - model.l23^2) / (2 * D_norm * model.l12) )
-q1 = ϕ + π - A
-C = acos( (D_norm^2 + model.l23^2 - model.l12^2) / (2 * D_norm * model.l23) )
-q2 = C + π + ϕ
+# A = acos( (D_norm^2 + model.l12^2 - model.l23^2) / (2 * D_norm * model.l12) )
+# q1 = ϕ + π - A
+# C = acos( (D_norm^2 + model.l23^2 - model.l12^2) / (2 * D_norm * model.l23) )
+# q2 = C + π + ϕ
 
-xg = [x0 + dx;  y0;  q1;  q2;  q3;  q4;  q5; 
-            dx0; dy0; dq1; dq2; dq3; dq4; dq5]
+# xg = [x0 + dx;  y0;  q1;  q2;  q3;  q4;  q5; 
+#             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
-# xg = [x0 + dx;  y0;  q5;  q4;  q3;  q2;  q1; 
-#           dx0; dy0; dq1; dq2; dq3; dq4; dq5]
+xg = [x0 + dx;  y0;  q5;  q4;  q3;  q2;  q1; 
+          dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
 # index sets 
-# M1 = vcat([ (i-1)*10      .+ (1:5)   for i = 1:5]...)
-# M2 = vcat([((i-1)*10 + 5) .+ (1:5)   for i = 1:4]...)
-# J1 = [5,15,25,35]
-# J2 = [10,20,30,40]
-
 # M1 = vcat([1:9, 19:27, 37:45]...)
 # M2 = vcat([10:18, 28:36]...)
 # J1 = [9, 27, 45]
 # J2 = [18, 36] 
 
-M1 = vcat([1:45]...)
-M2 = [46]
-J1 = [46]
-J2 = [46] 
+M1 = vcat([1:22]...)
+M2 = vcat([23:45]...)
+J1 = [22]
+J2 = [45] 
+
+# M1 = vcat([1:45]...)
+# M2 = [46]
+# J1 = [46]
+# J2 = [46] 
 
 # reference trajectory 
 Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
@@ -285,7 +285,7 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 Q = diagm(fill(1.0,14))
 # Q[2,2] = 10
 R = diagm(fill(1e-3,4))
-Qf = 1000*Q;
+Qf = 100*Q;
 
 # create indexing utilities 
 idx = create_idx(nx,nu,N)
@@ -313,7 +313,7 @@ x_u =  Inf*ones(idx.nz)
 # end
 
 # TODO: inequality constraint bounds
-cons = 4
+cons = 10
 c_l = 0*ones(cons*N)
 c_u = Inf*ones(cons*N)
 
