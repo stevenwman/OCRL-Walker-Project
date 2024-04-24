@@ -250,9 +250,6 @@ function unconstrained_dynamics(q, q̇, u, model, h)
     N = N_matrix(q, q̇, model)
     B = B_matrix()
 
-    # q̈ = M \ (B*u - N)
-    # q̇ₖ₊₁ = q̇ + q̈*h
-
     q̇ₖ₊₁ = q̇ + M \ (B*u - N)*h
     qₖ₊₁ = q + q̇*h 
     xₖ₊₁ = [qₖ₊₁; q̇ₖ₊₁]
