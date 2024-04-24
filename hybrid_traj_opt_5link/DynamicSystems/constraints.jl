@@ -70,7 +70,7 @@ function height_stairs(x_distance)
         height = 1.5
     end
 
-    # height = 0
+    height = 0
 
     return height
 end
