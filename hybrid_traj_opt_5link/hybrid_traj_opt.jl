@@ -159,7 +159,7 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
     idx, N, dt = params.idx, params.N, params.dt
     M1, M2 = params.M1, params.M2 
     
-    cons = 6
+    cons = 10
 
     # create c in a ForwardDiff friendly way (check HW0)
     c = zeros(eltype(Z), cons*N)
@@ -179,14 +179,14 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
 
         px, py, θ1, θ2, θ3, θ4, θ5 = xk[1:7]
 
-        c[k+4] = θ2 - θ1
-        c[k+5] = θ4 - θ5
+        c[k+4] = θ2 - θ1 + π/10
+        c[k+5] = θ4 - θ5 + π/10
 
-        # c[k+8] = θ1 - (θ2 - π)
-        # c[k+9] = θ5 - (θ4 - π)
+        c[k+8] = θ1 - (θ2 - π) - 3*π/5
+        c[k+9] = θ5 - (θ4 - π) - 3*π/5
 
-        # c[k+6] = θ3 - (π/2 - π/6) 
-        # c[k+7] = (π/2 + π/6) - θ3
+        c[k+6] = θ3 - (π/2 - π/6) 
+        c[k+7] = (π/2 + π/6) - θ3
     end
     return c
 end
@@ -243,9 +243,6 @@ dx = 4 # suppose our goal is to move like 5 meters forward
 xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q5;  q4;  q3;  q2;  q1; 
             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
-# xg = [x0 + dx;  y0;  q5;  q4;  q3;  q2;  q1; 
-#           dx0; dy0; dq1; dq2; dq3; dq4; dq5]
-
 # index sets 
 # M1 = vcat([1:20, 41:60, 81:100]...)
 # M2 = vcat([21:40, 61:80, 101:121]...)
@@ -271,7 +268,8 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 # Q = diagm([1; 10; fill(1.0, 5); 1; 10; fill(1.0, 5)]);
 # TODO: change this ↓ to maximize cg position along trajectory
 Q = diagm(fill(1.0,14))
-# Q[2,2] = 100
+Q[1,1] = 100
+Q[2,2] = 100
 R = diagm(fill(1e-3,4))
 Qf = 1*Q;
 
@@ -301,7 +299,7 @@ x_u =  Inf*ones(idx.nz)
 # end
 
 # TODO: inequality constraint bounds
-cons = 6
+cons = 10
 c_l = 0*ones(cons*N)
 # c_l = -Inf*ones(cons*N)
 c_u = Inf*ones(cons*N)
