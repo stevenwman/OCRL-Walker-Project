@@ -144,13 +144,21 @@ end
 
 function B_matrix()
     # q = [x y t1 t2 t3 t4 t5]
-    B = [ 0  0  0  0;
-          0  0  0  0;
-         -1  0  0  0;
-          1 -1  0  0;
-          0  0  1  0;
-          0  1 -1  1;
-          0  0  0 -1]
+    # B = [ 0  0  0  0;
+    #       0  0  0  0;
+    #      -1  0  0  0;
+    #       1 -1  0  0;
+    #       0  0  1  0;
+    #       0  1 -1  1;
+    #       0  0  0 -1]
+
+    B = [ 0  0   0  0;
+          0  0   0  0;
+         -1  0   0  0;
+          1 -1 1/2  0;
+          0  0  -1  0;
+          0  1 1/2  1;
+          0  0   0 -1]
 
     return B
 end
@@ -242,8 +250,10 @@ function unconstrained_dynamics(q, q̇, u, model, h)
     N = N_matrix(q, q̇, model)
     B = B_matrix()
 
-    q̈ = M \ (h*B*u - h*N)
-    q̇ₖ₊₁ = q̇ + q̈*h
+    # q̈ = M \ (B*u - N)
+    # q̇ₖ₊₁ = q̇ + q̈*h
+
+    q̇ₖ₊₁ = q̇ + M \ (B*u - N)*h
     qₖ₊₁ = q + q̇*h 
     xₖ₊₁ = [qₖ₊₁; q̇ₖ₊₁]
     return xₖ₊₁

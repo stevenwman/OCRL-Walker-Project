@@ -175,7 +175,7 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
     idx, N, dt = params.idx, params.N, params.dt
     M1, M2 = params.M1, params.M2 
     
-    cons = 8
+    cons = 4
 
     # create c in a ForwardDiff friendly way (check HW0)
     c = zeros(eltype(Z), cons*N)
@@ -193,11 +193,16 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
         r5y = r[5,2]
         c[k:k+3] = vcat([r1y; r2y; r4y; r5y]...)
 
-        c[k+4] = -(xk[3] - xk[4])
-        c[k+5] = -(xk[7] - xk[6])
+        px, py, θ1, θ2, θ3, θ4, θ5 = xk[1:7]
 
-        c[k+6] = xk[5] - (π/2 - π/3) 
-        c[k+7] = (π/2 + π/3) - xk[5]
+        # c[k+4] = θ2 - θ1
+        # c[k+5] = θ4 - θ5
+
+        # c[k+8] = θ1 - (θ2 - π) - π/6
+        # c[k+9] = θ5 - (θ4 - π) - π/6
+
+        # c[k+6] = θ3 - (π/2 - π/6) 
+        # c[k+7] = (π/2 + π/6) - θ3
     end
     return c
 end
@@ -236,16 +241,16 @@ dx0 = dy0 = dq1 = dq2 = dq3 = dq4 = dq5 = 0
 xic = [ x0;  y0;  q1;  q2;  q3;  q4;  q5; 
         dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 # dx = 5 # suppose our goal is to move like 5 meters forward
-dx = 3 # suppose our goal is to move like 5 meters forward
+dx = 0.25 # suppose our goal is to move like 5 meters forward
 
-# D = [x0 + dx, y0]
-# D_norm = norm(D)
-# ϕ = atan(D[2], D[1])
+D = [x0 + dx, y0]
+D_norm = norm(D)
+ϕ = atan(D[2], D[1])
 
-# A = acos( (D_norm^2 + model.l12^2 - model.l23^2) / (2 * D_norm * model.l12) )
-# q1 = ϕ + π - A
-# C = acos( (D_norm^2 + model.l23^2 - model.l12^2) / (2 * D_norm * model.l23) )
-# q2 = C + π + ϕ
+A = acos( (D_norm^2 + model.l12^2 - model.l23^2) / (2 * D_norm * model.l12) )
+q1 = ϕ + π - A
+C = acos( (D_norm^2 + model.l23^2 - model.l12^2) / (2 * D_norm * model.l23) )
+q2 = C + π + ϕ
 
 xg = [x0 + dx;  y0;  q1;  q2;  q3;  q4;  q5; 
             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
@@ -258,10 +263,16 @@ xg = [x0 + dx;  y0;  q1;  q2;  q3;  q4;  q5;
 # M2 = vcat([((i-1)*10 + 5) .+ (1:5)   for i = 1:4]...)
 # J1 = [5,15,25,35]
 # J2 = [10,20,30,40]
-M1 = vcat([1:11,24:35]...)
-M2 = vcat([12:23,36:45]...)
-J1 = [11, 35]
-J2 = [23, 45] 
+
+# M1 = vcat([1:9, 19:27, 37:45]...)
+# M2 = vcat([10:18, 28:36]...)
+# J1 = [9, 27, 45]
+# J2 = [18, 36] 
+
+M1 = vcat([1:45]...)
+M2 = [46]
+J1 = [46]
+J2 = [46] 
 
 # reference trajectory 
 Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
@@ -271,10 +282,10 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 # LQR cost function (tracking Xref, Uref)
 # Q = diagm([1; 10; fill(1.0, 5); 1; 10; fill(1.0, 5)]);
 # TODO: change this ↓ to maximize cg position along trajectory
-Q = diagm(fill(10.0,14))
-Q[2,2] = 100
+Q = diagm(fill(1.0,14))
+# Q[2,2] = 10
 R = diagm(fill(1e-3,4))
-Qf = 10*Q;
+Qf = 1000*Q;
 
 # create indexing utilities 
 idx = create_idx(nx,nu,N)
@@ -282,18 +293,12 @@ idx = create_idx(nx,nu,N)
 # put everything useful in params 
 params = (
     model = model, 
-    nx = nx,
-    nu = nu,
-    tf = tf, 
-    dt = dt, 
+    nx = nx, nu = nu,
+    tf = tf, dt = dt, 
     t_vec = t_vec,
     N = N, 
-    M1 = M1, 
-    M2 = M2,
-    J1 = J1, 
-    J2 = J2,
-    xic = xic, 
-    xg = xg,
+    M1 = M1, M2 = M2, J1 = J1, J2 = J2,
+    xic = xic, xg = xg,
     idx = idx,
     Q = Q, R = R, Qf = Qf,
     Xref = Xref, 
@@ -303,15 +308,12 @@ params = (
 # TODO: primal bounds (constraint 11)
 x_l = -Inf*ones(idx.nz)
 x_u =  Inf*ones(idx.nz)
-
 # for i = 1:N
 #     x_l[idx.x[i][[2]]] .= 0 
 # end
 
 # TODO: inequality constraint bounds
-
-cons = 8
-
+cons = 4
 c_l = 0*ones(cons*N)
 c_u = Inf*ones(cons*N)
 

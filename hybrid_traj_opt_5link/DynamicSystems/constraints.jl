@@ -74,10 +74,15 @@ function reference_trajectory(model, xic, xg, dt, N, M1, tf)
     horiz_v = (x_end - x_start)/ tf
     #now construct the Xref vector of vectors
     for i = 2:(N-1) 
-        if i in M1
-            Xref[i] = [x0 + horiz_v*i*dt , y0, q1, q2, q3, q4, q5, horiz_v, 0, 0, 0 ,0, 0, 0]
+        # if i in M1
+        #     Xref[i] = [x0 + horiz_v*i*dt , y0, q1, q2, q3, q4, q5, horiz_v, 0, 0, 0 ,0, 0, 0]
+        # else
+        #     Xref[i] = [x0 + horiz_v*i*dt , y0, q5, q4, q3, q2, q1, horiz_v, 0, 0, 0 ,0, 0, 0]
+        # end
+        if i < N/2
+            Xref[i] = xic
         else
-            Xref[i] = [x0 + horiz_v*i*dt , y0, q5, q4, q3, q2, q1, horiz_v, 0, 0, 0 ,0, 0, 0]
+            Xref[i] = xg
         end
     end
         
@@ -89,10 +94,8 @@ function height_stairs(x_distance)
     
     # step height increase occurs every 20 cm of horizontal distance traveled
     step_height_increase = 0.2  # 20 cm in m
-
     # calculate the number of step height increases based on the x_distance traveled
     num_increases = floor(x_distance / step_height_increase)
-
     # calculate the current height of the staircase
     height = num_increases * step_height_increase
 
