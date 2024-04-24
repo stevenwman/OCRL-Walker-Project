@@ -151,7 +151,7 @@ function walker_equality_constraint(params::NamedTuple, Z::Vector)::Vector
       Z[idx.x[1]] - xic;
       Z[idx.x[N]] - xg;
       walker_dynamics_constraints(params, Z);
-    #   walker_stance_constraint(params, Z)
+      walker_stance_constraint(params, Z)
     ]
 end
 
@@ -159,7 +159,7 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
     idx, N, dt = params.idx, params.N, params.dt
     M1, M2 = params.M1, params.M2 
     
-    cons = 10
+    cons = 4
 
     # create c in a ForwardDiff friendly way (check HW0)
     c = zeros(eltype(Z), cons*N)
@@ -179,14 +179,14 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
 
         px, py, θ1, θ2, θ3, θ4, θ5 = xk[1:7]
 
-        c[k+4] = θ2 - θ1
-        c[k+5] = θ4 - θ5
+        # c[k+4] = θ2 - θ1
+        # c[k+5] = θ4 - θ5
 
-        c[k+8] = θ1 - (θ2 - π)
-        c[k+9] = θ5 - (θ4 - π)
+        # c[k+8] = θ1 - (θ2 - π)
+        # c[k+9] = θ5 - (θ4 - π)
 
-        c[k+6] = θ3 - (π/2 - π/6) 
-        c[k+7] = (π/2 + π/6) - θ3
+        # c[k+6] = θ3 - (π/2 - π/6) 
+        # c[k+7] = (π/2 + π/6) - θ3
     end
     return c
 end
@@ -291,7 +291,7 @@ x_u =  Inf*ones(idx.nz)
 # end
 
 # TODO: inequality constraint bounds
-cons = 10
+cons = 4
 c_l = 0*ones(cons*N)
 # c_l = -Inf*ones(cons*N)
 c_u = Inf*ones(cons*N)
