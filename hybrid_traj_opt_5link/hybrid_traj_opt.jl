@@ -89,22 +89,6 @@ function walker_dynamics_constraints(params::NamedTuple, Z::Vector)::Vector
         xk   = Z[idx.x[k]]
         uk   = Z[idx.u[k]]
         xkp1 = Z[idx.x[k+1]]
-        
-        # if (k in M1) # (not in J1) is implied 
-        #     c[idx.c[k]] = discrete_stance1_dynamics(model, xk, uk, dt) - xkp1 
-        # elseif (k in M2) # (not in J1) is implied 
-        #     c[idx.c[k]] = discrete_stance2_dynamics(model, xk, uk, dt) - xkp1 
-        # end
-
-        # if (k in J1)
-        #     c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1
-        # elseif (k in J2)
-        #     c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1
-        # elseif (k in M1) # (not in J1) is implied 
-        #     c[idx.c[k]] = discrete_stance1_dynamics(model, xk, uk, dt) - xkp1 
-        # elseif (k in M2) # (not in J1) is implied 
-        #     c[idx.c[k]] = discrete_stance2_dynamics(model, xk, uk, dt) - xkp1 
-        # end
 
         if (k in M1) # (not in J1) is implied 
             c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1 
@@ -137,16 +121,16 @@ function walker_stance_constraint(params::NamedTuple, Z::Vector)::Vector
         r = biped5link_kinematics(q, model)
         rkp1 = biped5link_kinematics(qkp1, model)
         if (k in J1) || (k in J2)
-            c[i] = r[1,2]
-            c[i+1] = r[5,2]
+            c[i] = r[1,2] - height_stairs(r[1,1])
+            c[i+1] = r[5,2] - height_stairs(r[5,1])
         elseif (k in M1)
             foot_diff = r[1,:] - rkp1[1,:]
             c[i] = foot_diff[1]
-            c[i+1] = r[1,2]
+            c[i+1] = r[1,2] - height_stairs(r[1,1])
         elseif (k in M2)
             foot_diff = r[5,:] - rkp1[5,:]
             c[i] = foot_diff[1]
-            c[i+1] = r[5,2]
+            c[i+1] = r[5,2] - height_stairs(r[5,1])
         end
     end
 
@@ -187,10 +171,10 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
     for k = 1:cons:cons*N
         xk = Z[idx.x[Int((k+cons-1)/cons)]]
         r = biped5link_kinematics(xk[1:7], params.model)
-        r1y = r[1,2]
-        r2y = r[2,2]
-        r4y = r[4,2]
-        r5y = r[5,2]
+        r1y = r[1,2] - height_stairs(r[1,1])
+        r2y = r[2,2] - height_stairs(r[2,1])
+        r4y = r[4,2] - height_stairs(r[4,1])
+        r5y = r[5,2] - height_stairs(r[5,1])
         c[k:k+3] = vcat([r1y; r2y; r4y; r5y]...)
 
         px, py, θ1, θ2, θ3, θ4, θ5 = xk[1:7]
@@ -216,7 +200,8 @@ model = (m1 = .5,  m2 = .5,  m3 = 1,  m4 = .5,  m5 = .5,  m6 = .01,
 # problem size 
 nx = 14 
 nu = 4 
-tf = 4.4 
+# tf = 4.4
+tf = 6 
 dt = 0.1
 t_vec = 0:dt:tf 
 N = length(t_vec)
@@ -252,27 +237,17 @@ dx = 5 # suppose our goal is to move like 5 meters forward
 # C = acos( (D_norm^2 + model.l23^2 - model.l12^2) / (2 * D_norm * model.l23) )
 # q2 = C + π + ϕ
 
-# xg = [x0 + dx;  y0;  q1;  q2;  q3;  q4;  q5; 
-#             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
+xg = [x0 + dx;  y0;  q1;  q2;  q3;  q4;  q5; 
+            dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
-xg = [x0 + dx;  y0;  q5;  q4;  q3;  q2;  q1; 
-          dx0; dy0; dq1; dq2; dq3; dq4; dq5]
+# xg = [x0 + dx;  y0;  q5;  q4;  q3;  q2;  q1; 
+#           dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
 # index sets 
-M1 = vcat([1:9, 19:27, 37:45]...)
-M2 = vcat([10:18, 28:36]...)
+M1 = vcat([1:9, 19:27, 37:45, 55:61]...)
+M2 = vcat([10:18, 28:36, 46:54]...)
 J1 = [9, 27, 45]
-J2 = [18, 36] 
-
-# M1 = vcat([1:22]...)
-# M2 = vcat([23:45]...)
-# J1 = [22]
-# J2 = [45] 
-
-# M1 = vcat([1:45]...)
-# M2 = [46]
-# J1 = [46]
-# J2 = [46] 
+J2 = [18, 36, 54] 
 
 # reference trajectory 
 Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
