@@ -64,10 +64,10 @@ function height_stairs(x_distance)
 
     if x_distance < 0.2
         height = 0
-    elseif x_distance < 3
+    elseif x_distance < 1.5
         height = num_increases * step_height_increase / 2
     else
-        height = 1.5
+        height = 0.5
     end
 
     # height = 0

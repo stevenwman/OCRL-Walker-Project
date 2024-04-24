@@ -202,7 +202,7 @@ nx = 14
 nu = 4 
 # tf = 4.4
 tf = 6 
-dt = 0.05
+dt = 0.1
 t_vec = 0:dt:tf 
 N = length(t_vec)
 
@@ -226,7 +226,7 @@ dx0 = dy0 = dq1 = dq2 = dq3 = dq4 = dq5 = 0
 xic = [ x0;  y0;  q1;  q2;  q3;  q4;  q5; 
         dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 # dx = 5 # suppose our goal is to move like 5 meters forward
-dx = 5 # suppose our goal is to move like 5 meters forward
+dx = 1.5 # suppose our goal is to move like 5 meters forward
 
 # D = [x0 + dx, y0]
 # D_norm = norm(D)
@@ -251,6 +251,11 @@ M1 = vcat([1:20, 41:60, 81:100]...)
 M2 = vcat([21:40, 61:80, 101:121]...)
 J1 = [20, 60, 100]
 J2 = [40, 80] 
+
+M1 = vcat([1:30]...)
+M2 = vcat([31:61]...)
+J1 = [30]
+J2 = [62] 
 
 # reference trajectory 
 Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
