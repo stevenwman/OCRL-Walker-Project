@@ -226,7 +226,7 @@ dx0 = dy0 = dq1 = dq2 = dq3 = dq4 = dq5 = 0
 xic = [ x0;  y0;  q1;  q2;  q3;  q4;  q5; 
         dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 # dx = 5 # suppose our goal is to move like 5 meters forward
-dx = 3 # suppose our goal is to move like 5 meters forward
+dx = 4 # suppose our goal is to move like 5 meters forward
 
 # D = [x0 + dx, y0]
 # D_norm = norm(D)
@@ -237,11 +237,11 @@ dx = 3 # suppose our goal is to move like 5 meters forward
 # C = acos( (D_norm^2 + model.l23^2 - model.l12^2) / (2 * D_norm * model.l23) )
 # q2 = C + π + ϕ
 
-xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q1;  q2;  q3;  q4;  q5; 
-            dx0; dy0; dq1; dq2; dq3; dq4; dq5]
-
-# xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q5;  q4;  q3;  q2;  q1; 
+# xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q1;  q2;  q3;  q4;  q5; 
 #             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
+
+xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q5;  q4;  q3;  q2;  q1; 
+            dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
 # xg = [x0 + dx;  y0;  q5;  q4;  q3;  q2;  q1; 
 #           dx0; dy0; dq1; dq2; dq3; dq4; dq5]
@@ -252,10 +252,10 @@ xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q1;  q2;  q3;  q4;  q5;
 # J1 = [20, 60, 100]
 # J2 = [40, 80] 
 
-M1 = vcat([1:10,  26:38, 53:61]...)
-M2 = vcat([11:25, 39:52]...)
-J1 = [10, 38]
-J2 = [25, 52] 
+M1 = vcat([1:15,  31:45]...)
+M2 = vcat([16:30, 46:61]...)
+J1 = [15, 45]
+J2 = [30, 61] 
 
 # M1 = vcat([1:30]...)
 # M2 = vcat([31:61]...)
