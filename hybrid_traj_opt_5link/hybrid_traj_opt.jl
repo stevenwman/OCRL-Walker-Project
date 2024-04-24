@@ -226,7 +226,7 @@ dx0 = dy0 = dq1 = dq2 = dq3 = dq4 = dq5 = 0
 xic = [ x0;  y0;  q1;  q2;  q3;  q4;  q5; 
         dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 # dx = 5 # suppose our goal is to move like 5 meters forward
-dx = 5 # suppose our goal is to move like 5 meters forward
+dx = 3 # suppose our goal is to move like 5 meters forward
 
 # D = [x0 + dx, y0]
 # D_norm = norm(D)
