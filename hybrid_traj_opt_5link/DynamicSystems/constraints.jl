@@ -97,7 +97,14 @@ function height_stairs(x_distance)
     # calculate the number of step height increases based on the x_distance traveled
     num_increases = floor(x_distance / step_height_increase)
     # calculate the current height of the staircase
-    height = num_increases * step_height_increase
+
+    if x_distance < 0.2
+        height = 0
+    elseif x_distance < 0.4
+        height = num_increases * step_height_increase
+    else
+        height = 0.4
+    end
 
     return height
 end

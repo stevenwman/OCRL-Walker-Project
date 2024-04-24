@@ -241,7 +241,7 @@ dx0 = dy0 = dq1 = dq2 = dq3 = dq4 = dq5 = 0
 xic = [ x0;  y0;  q1;  q2;  q3;  q4;  q5; 
         dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 # dx = 5 # suppose our goal is to move like 5 meters forward
-dx = 1 # suppose our goal is to move like 5 meters forward
+dx = 5 # suppose our goal is to move like 5 meters forward
 
 # D = [x0 + dx, y0]
 # D_norm = norm(D)
@@ -259,15 +259,15 @@ xg = [x0 + dx;  y0;  q5;  q4;  q3;  q2;  q1;
           dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
 # index sets 
-# M1 = vcat([1:9, 19:27, 37:45]...)
-# M2 = vcat([10:18, 28:36]...)
-# J1 = [9, 27, 45]
-# J2 = [18, 36] 
+M1 = vcat([1:9, 19:27, 37:45]...)
+M2 = vcat([10:18, 28:36]...)
+J1 = [9, 27, 45]
+J2 = [18, 36] 
 
-M1 = vcat([1:22]...)
-M2 = vcat([23:45]...)
-J1 = [22]
-J2 = [45] 
+# M1 = vcat([1:22]...)
+# M2 = vcat([23:45]...)
+# J1 = [22]
+# J2 = [45] 
 
 # M1 = vcat([1:45]...)
 # M2 = [46]
@@ -283,9 +283,9 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 # Q = diagm([1; 10; fill(1.0, 5); 1; 10; fill(1.0, 5)]);
 # TODO: change this ↓ to maximize cg position along trajectory
 Q = diagm(fill(1.0,14))
-# Q[2,2] = 10
+Q[2,2] = 100
 R = diagm(fill(1e-3,4))
-Qf = 100*Q;
+Qf = 1*Q;
 
 # create indexing utilities 
 idx = create_idx(nx,nu,N)
