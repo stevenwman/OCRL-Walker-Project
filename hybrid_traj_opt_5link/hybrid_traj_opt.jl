@@ -90,12 +90,13 @@ function walker_dynamics_constraints(params::NamedTuple, Z::Vector)::Vector
         uk   = Z[idx.u[k]]
         xkp1 = Z[idx.x[k+1]]
 
-        if (k in M1) # (not in J1) is implied 
-            c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1 
-        elseif (k in M2) # (not in J1) is implied 
-            c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1 
-        end
+        # if (k in M1) # (not in J1) is implied 
+        #     c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1 
+        # elseif (k in M2) # (not in J1) is implied 
+        #     c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1 
+        # end
 
+        c[idx.c[k]] = hermite_simpson(model, unconstrained_ode, xk, xkp1, uk, dt)
     end
 
     return c 
@@ -226,22 +227,22 @@ dx0 = dy0 = dq1 = dq2 = dq3 = dq4 = dq5 = 0
 xic = [ x0;  y0;  q1;  q2;  q3;  q4;  q5; 
         dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 # dx = 5 # suppose our goal is to move like 5 meters forward
-dx = 4 # suppose our goal is to move like 5 meters forward
+dx = 0.25 # suppose our goal is to move like 5 meters forward
 
-# D = [x0 + dx, y0]
-# D_norm = norm(D)
-# ϕ = atan(D[2], D[1])
+D = [x0 + dx, y0]
+D_norm = norm(D)
+ϕ = atan(D[2], D[1])
 
-# A = acos( (D_norm^2 + model.l12^2 - model.l23^2) / (2 * D_norm * model.l12) )
-# q1 = ϕ + π - A
-# C = acos( (D_norm^2 + model.l23^2 - model.l12^2) / (2 * D_norm * model.l23) )
-# q2 = C + π + ϕ
+A = acos( (D_norm^2 + model.l12^2 - model.l23^2) / (2 * D_norm * model.l12) )
+q1 = ϕ + π - A
+C = acos( (D_norm^2 + model.l23^2 - model.l12^2) / (2 * D_norm * model.l23) )
+q2 = C + π + ϕ
 
-# xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q1;  q2;  q3;  q4;  q5; 
-#             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
-
-xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q5;  q4;  q3;  q2;  q1; 
+xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q1;  q2;  q3;  q4;  q5; 
             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
+
+# xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q5;  q4;  q3;  q2;  q1; 
+#             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
 # index sets 
 # M1 = vcat([1:20, 41:60, 81:100]...)
@@ -249,15 +250,20 @@ xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q5;  q4;  q3;  q2;  q1;
 # J1 = [20, 60, 100]
 # J2 = [40, 80] 
 
-M1 = vcat([1:15,  31:45]...)
-M2 = vcat([16:30, 46:61]...)
-J1 = [15, 45]
-J2 = [30, 61] 
+# M1 = vcat([1:15,  31:45]...)
+# M2 = vcat([16:30, 46:61]...)
+# J1 = [15, 45]
+# J2 = [30, 61] 
 
 # M1 = vcat([1:30]...)
 # M2 = vcat([31:61]...)
 # J1 = [30]
 # J2 = [62] 
+
+M1 = vcat([1:61]...)
+M2 = [62]
+J1 = [62]
+J2 = [62] 
 
 # reference trajectory 
 Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
@@ -268,9 +274,9 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 # Q = diagm([1; 10; fill(1.0, 5); 1; 10; fill(1.0, 5)]);
 # TODO: change this ↓ to maximize cg position along trajectory
 Q = diagm(fill(1.0,14))
-Q[1,1] = 100
-Q[2,2] = 100
-Q[5,5] = 100
+# Q[1,1] = 100
+# Q[2,2] = 100
+# Q[5,5] = 100
 R = diagm(fill(1e-3,4))
 Qf = 1*Q;
 

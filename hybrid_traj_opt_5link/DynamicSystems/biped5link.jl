@@ -245,61 +245,90 @@ function kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
     return newton_step
 end
 
-function unconstrained_dynamics(q, q̇, u, model, h)
+# function unconstrained_dynamics(q, q̇, u, model, h)
+#     M = M_matrix(q, model)
+#     N = N_matrix(q, q̇, model)
+#     B = B_matrix()
+
+#     q̇ₖ₊₁ = q̇ + M \ (B*u - N)*h^2
+#     qₖ₊₁ = q + q̇*h 
+#     xₖ₊₁ = [qₖ₊₁; q̇ₖ₊₁]
+#     return xₖ₊₁
+# end
+
+function unconstrained_ode(model, x, u)
+    q, q̇ = x[1:7], x[8:14]
     M = M_matrix(q, model)
     N = N_matrix(q, q̇, model)
     B = B_matrix()
 
-    q̇ₖ₊₁ = q̇ + M \ (B*u - N)*h^2
-    qₖ₊₁ = q + q̇*h 
-    xₖ₊₁ = [qₖ₊₁; q̇ₖ₊₁]
-    return xₖ₊₁
+    q̈ = M \ (B*u - N)
+    ẋ = [q̇; q̈]
+    return ẋ
 end
 
-function forward_dynamics(q, q̇, u, model, fpos, constraint, h, tol=1e-9, max_iter=100, verbose=true)
-    # solve the KKT system for the newton step
-    old_step = kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
-    newton_step = old_step
-    for i = 1:max_iter-1
-        q̇ₖ₊₁ = newton_step[1:7]
-        qₖ₊₁ = q + q̇ₖ₊₁*h
+function rk4(model::NamedTuple, ode::Function, x::Vector, u::Vector, dt::Real)::Vector
+    k1 = dt * ode(model, x,        u)
+    k2 = dt * ode(model, x + k1/2, u)
+    k3 = dt * ode(model, x + k2/2, u)
+    k4 = dt * ode(model, x + k3,   u)
+    return x + (1/6)*(k1 + 2*k2 + 2*k3 + k4)
+end  
 
-        newton_step = kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
-        # @show newton_step
-        step_change = norm(newton_step - old_step)
-        old_step = newton_step
+function hermite_simpson(model::NamedTuple, ode::Function, x1::Vector, x2::Vector, u, dt::Real)::Vector
+    # TODO: input hermite simpson implicit integrator residual 
+    ẋ_k = ode(model, x1, u)
+    ẋ_kp1 = ode(model, x2, u)
+    x_kpm = 1/2*(x1 + x2) + dt/8*(ẋ_k - ẋ_kp1)
+    ẋ_kpm = ode(model, x_kpm, u)
+    res = x1 + dt/6*(ẋ_k + 4*ẋ_kpm + ẋ_kp1) - x2
+    return res
+end
 
-        if verbose 
-            print("iter: $i    |r|: $step_change   \n")
-        end
+# function forward_dynamics(q, q̇, u, model, fpos, constraint, h, tol=1e-9, max_iter=100, verbose=true)
+#     # solve the KKT system for the newton step
+#     old_step = kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
+#     newton_step = old_step
+#     for i = 1:max_iter-1
+#         q̇ₖ₊₁ = newton_step[1:7]
+#         qₖ₊₁ = q + q̇ₖ₊₁*h
+
+#         newton_step = kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
+#         # @show newton_step
+#         step_change = norm(newton_step - old_step)
+#         old_step = newton_step
+
+#         if verbose 
+#             print("iter: $i    |r|: $step_change   \n")
+#         end
         
-        # check convergence
-        if norm(step_change) < tol
-            λ = newton_step[8:end]
-            return qₖ₊₁, q̇ₖ₊₁, λ
-        end
-    end
-    error("Newton iteration did not converge")
-end
+#         # check convergence
+#         if norm(step_change) < tol
+#             λ = newton_step[8:end]
+#             return qₖ₊₁, q̇ₖ₊₁, λ
+#         end
+#     end
+#     error("Newton iteration did not converge")
+# end
 
-function simulate(q, q̇, u, model, fpos, constraint, h, T)
-    t = 0
-    q_hist = zeros(T, 7)
-    q̇_hist = zeros(T, 7)
-    λ_hist = zeros(T, 2)
+# function simulate(q, q̇, u, model, fpos, constraint, h, T)
+#     t = 0
+#     q_hist = zeros(T, 7)
+#     q̇_hist = zeros(T, 7)
+#     λ_hist = zeros(T, 2)
 
-    q_hist[1, :] = q
-    q̇_hist[1, :] = q̇
+#     q_hist[1, :] = q
+#     q̇_hist[1, :] = q̇
 
-    for i = 2:T
-        print("t: $t \n")
-        t += h
-        q, q̇, λ = forward_dynamics(q, q̇, u(t), model, fpos, constraint, h)
-        q_hist[i, :] = q
-        q̇_hist[i, :] = q̇
-        λ_hist[i, :] = λ
-    end
+#     for i = 2:T
+#         print("t: $t \n")
+#         t += h
+#         q, q̇, λ = forward_dynamics(q, q̇, u(t), model, fpos, constraint, h)
+#         q_hist[i, :] = q
+#         q̇_hist[i, :] = q̇
+#         λ_hist[i, :] = λ
+#     end
 
-    return q_hist, q̇_hist, λ_hist
-end
+#     return q_hist, q̇_hist, λ_hist
+# end
 
