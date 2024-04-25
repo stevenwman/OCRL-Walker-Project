@@ -159,7 +159,7 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
     idx, N, dt = params.idx, params.N, params.dt
     M1, M2 = params.M1, params.M2 
     
-    cons = 10
+    cons = 6
 
     # create c in a ForwardDiff friendly way (check HW0)
     c = zeros(eltype(Z), cons*N)
@@ -182,11 +182,11 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
         c[k+4] = θ2 - θ1 + π/10
         c[k+5] = θ4 - θ5 + π/10
 
-        c[k+8] = θ1 - (θ2 - π) - 3*π/5
-        c[k+9] = θ5 - (θ4 - π) - 3*π/5
+        # c[k+8] = θ1 - (θ2 - π) - 3*π/5
+        # c[k+9] = θ5 - (θ4 - π) - 3*π/5
 
-        c[k+6] = θ3 - (π/2 - π/6) 
-        c[k+7] = (π/2 + π/6) - θ3
+        # c[k+6] = θ3 - (π/2 - π/6) 
+        # c[k+7] = (π/2 + π/6) - θ3
     end
     return c
 end
@@ -270,6 +270,7 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 Q = diagm(fill(1.0,14))
 Q[1,1] = 100
 Q[2,2] = 100
+Q[5,5] = 100
 R = diagm(fill(1e-3,4))
 Qf = 1*Q;
 
@@ -299,7 +300,7 @@ x_u =  Inf*ones(idx.nz)
 # end
 
 # TODO: inequality constraint bounds
-cons = 10
+cons = 6
 c_l = 0*ones(cons*N)
 # c_l = -Inf*ones(cons*N)
 c_u = Inf*ones(cons*N)
@@ -336,3 +337,7 @@ animate_walker(X, model)
 display(plot(Xm[1,:],Xm[2,:], label = "body"))
 display(plot(t_vec[1:end-1], Um',xlabel = "time (s)", ylabel = "U",
                 label = ["u1" "u2" "u3" "u4"], title = "Controls"))
+
+##
+
+save("results.jld2", "X", X, "U", U, "Xm", Xm, "Um", Um, "Z", Z, "params", params)
