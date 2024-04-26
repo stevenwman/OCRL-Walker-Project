@@ -144,13 +144,6 @@ end
 
 function B_matrix()
     # q = [x y t1 t2 t3 t4 t5]
-    # B = [ 0  0  0  0;
-    #       0  0  0  0;
-    #      -1  0  0  0;
-    #       1 -1  0  0;
-    #       0  0  1  0;
-    #       0  1 -1  1;
-    #       0  0  0 -1]
 
     B = [ 0  0   0  0;
           0  0   0  0;
@@ -208,42 +201,91 @@ function groundGuard(q, joint, model, ground_height)
     return impactCheck
 end
 
-# could be a misnomer, might just rename to "kkt_rhs"
-function kkt_conditions(q, q̇, u, model, h, constraint, fpos)
+# # could be a misnomer, might just rename to "kkt_rhs"
+# function kkt_conditions(q, q̇, u, model, h, constraint, fpos)
+#     # rigth hand side of the KKT system:
+#     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
+#     # [J(q)*h         0] [   λ] = [               -C(q)]
+
+#     M = M_matrix(q, model)
+#     N = N_matrix(q, q̇, model)
+#     B = B_matrix()
+
+#     kkt_conditions = [M*q̇ + h*B*u - h*N;
+#                       -constraint(q, model, fpos)]
+#     return kkt_conditions
+# end
+
+# function kkt_jacobian(q, model, constraint, fpos, h)
+#     # returns the left hand side of the KKT system:
+#     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
+#     # [J(q)*h         0] [   λ] = [               -C(q)]
+
+#     M = M_matrix(q, model)
+#     J = J_matrix(q, model, constraint, fpos)
+
+#     kkt_jac = [M   -J'*h;
+#                J*h zeros(size(J, 1), size(J, 1))]
+#     return kkt_jac
+# end
+
+function kkt_rhs(x, xₖ₊₁, u, model, h, constraint, fpos)
     # rigth hand side of the KKT system:
     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
     # [J(q)*h         0] [   λ] = [               -C(q)]
+
+    q, q̇ = x[1:7], x[8:14]
+    qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
 
     M = M_matrix(q, model)
     N = N_matrix(q, q̇, model)
     B = B_matrix()
 
-    kkt_conditions = [M*q̇ + h*B*u - h*N;
-                      -constraint(q, model, fpos)]
-    return kkt_conditions
+    kkt_rhs = [M*q̇ + h*B*u - h*N;
+                      -constraint(qₖ₊₁, model, fpos)]
+    return kkt_rhs
 end
 
-function kkt_jacobian(q, model, constraint, fpos, h)
+function kkt_lhs(x, xₖ₊₁, model, constraint, fpos, h)
     # returns the left hand side of the KKT system:
     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
     # [J(q)*h         0] [   λ] = [               -C(q)]
 
+    q, q̇ = x[1:7], x[8:14]
+    qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
+
     M = M_matrix(q, model)
-    J = J_matrix(q, model, constraint, fpos)
+    J = J_matrix(qₖ₊₁, model, constraint, fpos)
 
-    kkt_jac = [M   -J'*h;
+    kkt_lhs = [M   -J'*h;
                J*h zeros(size(J, 1), size(J, 1))]
-    return kkt_jac
+    return kkt_lhs
 end
 
-function kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
+function constrained_discrete_dynamics(x, xₖ₊₁, u, model, fpos, constraint, h)
     # solve the KKT system for the newton step
-    kkt_jac = kkt_jacobian(q, model, constraint, fpos, h)
-    kkt_cond = kkt_conditions(q, q̇, u, model, h, constraint, fpos)
+    kkt_jac = kkt_lhs(x, xₖ₊₁, model, constraint, fpos, h)
+    kkt_cond = kkt_rhs(x, xₖ₊₁, u, model, h, constraint, fpos)
 
-    newton_step = kkt_jac \ kkt_cond
-    return newton_step
+    żₖ₊₁ = kkt_jac \ kkt_cond
+    q̇ₖ₊₁ = żₖ₊₁[1:7]
+    λₖ₊₁ = żₖ₊₁[7:end]
+
+    qₖ = x[1:7]
+    qₖ₊₁ = qₖ + q̇ₖ₊₁*h
+    res = [qₖ₊₁; q̇ₖ₊₁] - xₖ₊₁
+
+    return res
 end
+
+# function kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
+#     # solve the KKT system for the newton step
+#     kkt_jac = kkt_jacobian(q, model, constraint, fpos, h)
+#     kkt_cond = kkt_conditions(q, q̇, u, model, h, constraint, fpos)
+
+#     newton_step = kkt_jac \ kkt_cond
+#     return newton_step
+# end
 
 # function unconstrained_dynamics(q, q̇, u, model, h)
 #     M = M_matrix(q, model)
@@ -256,34 +298,34 @@ end
 #     return xₖ₊₁
 # end
 
-function unconstrained_ode(model, x, u)
-    q, q̇ = x[1:7], x[8:14]
-    M = M_matrix(q, model)
-    N = N_matrix(q, q̇, model)
-    B = B_matrix()
+# function unconstrained_ode(model, x, u)
+#     q, q̇ = x[1:7], x[8:14]
+#     M = M_matrix(q, model)
+#     N = N_matrix(q, q̇, model)
+#     B = B_matrix()
 
-    q̈ = M \ (B*u - N)
-    ẋ = [q̇; q̈]
-    return ẋ
-end
+#     q̈ = M \ (B*u - N)
+#     ẋ = [q̇; q̈]
+#     return ẋ
+# end
 
-function rk4(model::NamedTuple, ode::Function, x::Vector, u::Vector, dt::Real)::Vector
-    k1 = dt * ode(model, x,        u)
-    k2 = dt * ode(model, x + k1/2, u)
-    k3 = dt * ode(model, x + k2/2, u)
-    k4 = dt * ode(model, x + k3,   u)
-    return x + (1/6)*(k1 + 2*k2 + 2*k3 + k4)
-end  
+# function rk4(model::NamedTuple, ode::Function, x::Vector, u::Vector, dt::Real)::Vector
+#     k1 = dt * ode(model, x,        u)
+#     k2 = dt * ode(model, x + k1/2, u)
+#     k3 = dt * ode(model, x + k2/2, u)
+#     k4 = dt * ode(model, x + k3,   u)
+#     return x + (1/6)*(k1 + 2*k2 + 2*k3 + k4)
+# end  
 
-function hermite_simpson(model::NamedTuple, ode::Function, x1::Vector, x2::Vector, u, dt::Real)::Vector
-    # TODO: input hermite simpson implicit integrator residual 
-    ẋ_k = ode(model, x1, u)
-    ẋ_kp1 = ode(model, x2, u)
-    x_kpm = 1/2*(x1 + x2) + dt/8*(ẋ_k - ẋ_kp1)
-    ẋ_kpm = ode(model, x_kpm, u)
-    res = x1 + dt/6*(ẋ_k + 4*ẋ_kpm + ẋ_kp1) - x2
-    return res
-end
+# function hermite_simpson(model::NamedTuple, ode::Function, x1::Vector, x2::Vector, u, dt::Real)::Vector
+#     # TODO: input hermite simpson implicit integrator residual 
+#     ẋ_k = ode(model, x1, u)
+#     ẋ_kp1 = ode(model, x2, u)
+#     x_kpm = 1/2*(x1 + x2) + dt/8*(ẋ_k - ẋ_kp1)
+#     ẋ_kpm = ode(model, x_kpm, u)
+#     res = x1 + dt/6*(ẋ_k + 4*ẋ_kpm + ẋ_kp1) - x2
+#     return res
+# end
 
 # function forward_dynamics(q, q̇, u, model, fpos, constraint, h, tol=1e-9, max_iter=100, verbose=true)
 #     # solve the KKT system for the newton step

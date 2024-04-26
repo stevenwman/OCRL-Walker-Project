@@ -89,6 +89,9 @@ function walker_dynamics_constraints(params::NamedTuple, Z::Vector)::Vector
         xk   = Z[idx.x[k]]
         uk   = Z[idx.u[k]]
         xkp1 = Z[idx.x[k+1]]
+        
+        r = biped5link_kinematics(xk[1:7], model)
+        fpos = vcat([r[1,:];r[5,:]]...)
 
         # if (k in M1) # (not in J1) is implied 
         #     c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1 
@@ -96,47 +99,51 @@ function walker_dynamics_constraints(params::NamedTuple, Z::Vector)::Vector
         #     c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1 
         # end
 
-        c[idx.c[k]] = hermite_simpson(model, unconstrained_ode, xk, xkp1, uk, dt)
+        if (k in M1) # (not in J1) is implied 
+            c[idx.c[k]] = implicit_euler(xk, xkp1, uk, model, fpos, left_foot_constraint, dt)
+        elseif (k in M2) # (not in J1) is implied 
+            c[idx.c[k]] = implicit_euler(xk, xkp1, uk, model, fpos, right_foot_constraint, dt)
+        end
     end
 
     return c 
 end
 
-function walker_stance_constraint(params::NamedTuple, Z::Vector)::Vector
-    idx, N, dt = params.idx, params.N, params.dt
-    M1, M2 = params.M1, params.M2 
-    J1, J2 = params.J1, params.J2 
+# function walker_stance_constraint(params::NamedTuple, Z::Vector)::Vector
+#     idx, N, dt = params.idx, params.N, params.dt
+#     M1, M2 = params.M1, params.M2 
+#     J1, J2 = params.J1, params.J2 
     
-    model = params.model 
+#     model = params.model 
 
-    # create c in a ForwardDiff friendly way (check HW0)
-    c = zeros(eltype(Z), 2*N)
+#     # create c in a ForwardDiff friendly way (check HW0)
+#     c = zeros(eltype(Z), 2*N)
     
-    # TODO: add walker stance constraints (constraints 7-8 in the opti problem)
-    for i = 1:2:2*(N-1) 
-        k = Int((i+1)/2)
-        x = Z[idx.x[k]]
-        xkp1 = Z[idx.x[k+1]]
-        q = x[1:7]
-        qkp1 = xkp1[1:7]
-        r = biped5link_kinematics(q, model)
-        rkp1 = biped5link_kinematics(qkp1, model)
-        if (k in J1) || (k in J2)
-            c[i] = r[1,2] - height_stairs(r[1,1])
-            c[i+1] = r[5,2] - height_stairs(r[5,1])
-        elseif (k in M1)
-            foot_diff = r[1,:] - rkp1[1,:]
-            c[i] = foot_diff[1]
-            c[i+1] = r[1,2] - height_stairs(r[1,1])
-        elseif (k in M2)
-            foot_diff = r[5,:] - rkp1[5,:]
-            c[i] = foot_diff[1]
-            c[i+1] = r[5,2] - height_stairs(r[5,1])
-        end
-    end
+#     # TODO: add walker stance constraints (constraints 7-8 in the opti problem)
+#     for i = 1:2:2*(N-1) 
+#         k = Int((i+1)/2)
+#         x = Z[idx.x[k]]
+#         xkp1 = Z[idx.x[k+1]]
+#         q = x[1:7]
+#         qkp1 = xkp1[1:7]
+#         r = biped5link_kinematics(q, model)
+#         rkp1 = biped5link_kinematics(qkp1, model)
+#         if (k in J1) || (k in J2)
+#             c[i] = r[1,2] - height_stairs(r[1,1])
+#             c[i+1] = r[5,2] - height_stairs(r[5,1])
+#         elseif (k in M1)
+#             foot_diff = r[1,:] - rkp1[1,:]
+#             c[i] = foot_diff[1]
+#             c[i+1] = r[1,2] - height_stairs(r[1,1])
+#         elseif (k in M2)
+#             foot_diff = r[5,:] - rkp1[5,:]
+#             c[i] = foot_diff[1]
+#             c[i+1] = r[5,2] - height_stairs(r[5,1])
+#         end
+#     end
 
-    return c
-end
+#     return c
+# end
     
 function walker_equality_constraint(params::NamedTuple, Z::Vector)::Vector
     N, idx, xic, xg = params.N, params.idx, params.xic, params.xg 
@@ -151,8 +158,8 @@ function walker_equality_constraint(params::NamedTuple, Z::Vector)::Vector
     [   
       Z[idx.x[1]] - xic;
       Z[idx.x[N]] - xg;
-      walker_dynamics_constraints(params, Z);
-      walker_stance_constraint(params, Z)
+      walker_dynamics_constraints(params, Z)
+    #   walker_stance_constraint(params, Z)
     ]
 end
 
@@ -273,10 +280,10 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 # LQR cost function (tracking Xref, Uref)
 # Q = diagm([1; 10; fill(1.0, 5); 1; 10; fill(1.0, 5)]);
 # TODO: change this ↓ to maximize cg position along trajectory
-Q = diagm(fill(1.0,14))
-# Q[1,1] = 100
-# Q[2,2] = 100
-# Q[5,5] = 100
+Q = diagm(fill(0,14))
+Q[1,1] = 10
+Q[2,2] = 10
+Q[5,5] = 10
 R = diagm(fill(1e-3,4))
 Qf = 1*Q;
 
@@ -307,8 +314,8 @@ x_u =  Inf*ones(idx.nz)
 
 # TODO: inequality constraint bounds
 cons = 6
-c_l = 0*ones(cons*N)
-# c_l = -Inf*ones(cons*N)
+# c_l = 0*ones(cons*N)
+c_l = -Inf*ones(cons*N)
 c_u = Inf*ones(cons*N)
 
 # TODO: initial guess, initialize z0 with the reference Xref, Uref 
