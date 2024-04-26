@@ -156,37 +156,41 @@ function B_matrix()
     return B
 end
 
-# function left_foot_constraint(q, model, fpos)
-#     f1posX, f1posY, f2posX, f2posY = fpos
+function left_foot_constraint(q, model, fpos)
+    f1posX, f1posY, f2posX, f2posY = fpos
 
-#     r = biped5link_kinematics(q, model)
-#     r1 = r[1,:]
+    f1posY = height_stairs(f1posX)
 
-#     c1 = r1[1] - f1posX
-#     c2 = r1[2] - f1posY
-#     c3 = 0
-#     c4 = 0
+    r = biped5link_kinematics(q, model)
+    r1 = r[1,:]
 
-#     # C = [c1; c2; c3; c4]
-#     C = [c1; c2]
-#     return C
-# end
+    c1 = r1[1] - f1posX
+    c2 = r1[2] - f1posY
+    c3 = 0
+    c4 = 0
 
-# function right_foot_constraint(q, model, fpos)
-#     f1posX, f1posY, f2posX, f2posY = fpos
+    # C = [c1; c2; c3; c4]
+    C = [c1; c2]
+    return C
+end
 
-#     r = biped5link_kinematics(q, model)
-#     r5 = r[5,:]
+function right_foot_constraint(q, model, fpos)
+    f1posX, f1posY, f2posX, f2posY = fpos
 
-#     c1 = 0
-#     c2 = 0
-#     c3 = r5[1] - f2posX
-#     c4 = r5[2] - f2posY
+    f2posY = height_stairs(f2posX)
 
-#     # C = [c1; c2; c3; c4]
-#     C = [c3; c4]
-#     return C
-# end
+    r = biped5link_kinematics(q, model)
+    r5 = r[5,:]
+
+    c1 = 0
+    c2 = 0
+    c3 = r5[1] - f2posX
+    c4 = r5[2] - f2posY
+
+    # C = [c1; c2; c3; c4]
+    C = [c3; c4]
+    return C
+end
 
 function J_matrix(q, model, constraint, fpos)
     J  = FD.jacobian(_q -> constraint(_q, model, fpos), q)
@@ -229,7 +233,7 @@ end
 #     return kkt_jac
 # end
 
-function kkt_rhs(x, xₖ₊₁, u, model, h, constraint, fpos)
+function kkt_rhs(x, xₖ₊₁, u, model, constraint, fpos, h)
     # rigth hand side of the KKT system:
     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
     # [J(q)*h         0] [   λ] = [               -C(q)]
@@ -237,8 +241,8 @@ function kkt_rhs(x, xₖ₊₁, u, model, h, constraint, fpos)
     q, q̇ = x[1:7], x[8:14]
     qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
 
-    M = M_matrix(q, model)
-    N = N_matrix(q, q̇, model)
+    M = M_matrix(qₖ₊₁, model)
+    N = N_matrix(qₖ₊₁, q̇ₖ₊₁, model)
     B = B_matrix()
 
     kkt_rhs = [M*q̇ + h*B*u - h*N;
@@ -254,7 +258,7 @@ function kkt_lhs(x, xₖ₊₁, model, constraint, fpos, h)
     q, q̇ = x[1:7], x[8:14]
     qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
 
-    M = M_matrix(q, model)
+    M = M_matrix(qₖ₊₁, model)
     Jc = J_matrix(qₖ₊₁, model, constraint, fpos)
 
     kkt_lhs = [M   -Jc'*h;
@@ -265,11 +269,10 @@ end
 function constrained_discrete_dynamics(x, xₖ₊₁, u, model, fpos, constraint, h)
     # solve the KKT system for the newton step
     kkt_jac = kkt_lhs(x, xₖ₊₁, model, constraint, fpos, h)
-    kkt_cond = kkt_rhs(x, xₖ₊₁, u, model, h, constraint, fpos)
+    kkt_cond = kkt_rhs(x, xₖ₊₁, u, model, constraint, fpos, h)
 
     żₖ₊₁ = kkt_jac \ kkt_cond
     q̇ₖ₊₁ = żₖ₊₁[1:7]
-    λₖ₊₁ = żₖ₊₁[7:end]
 
     qₖ = x[1:7]
     qₖ₊₁ = qₖ + q̇ₖ₊₁*h
