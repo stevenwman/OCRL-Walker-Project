@@ -84,7 +84,6 @@ function walker_dynamics_constraints(params::NamedTuple, Z::Vector)::Vector
     # create c in a ForwardDiff friendly way (check HW0)
     c = zeros(eltype(Z), idx.nc)
     
-    # TODO: input walker dynamics constraints (constraints 3-6 in the opti problem)
     for k = 1:(N-1)
         xk   = Z[idx.x[k]]
         uk   = Z[idx.u[k]]
@@ -92,12 +91,6 @@ function walker_dynamics_constraints(params::NamedTuple, Z::Vector)::Vector
         
         r = biped5link_kinematics(xk[1:7], model)
         fpos = vcat([r[1,:];r[5,:]]...)
-
-        # if (k in M1) # (not in J1) is implied 
-        #     c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1 
-        # elseif (k in M2) # (not in J1) is implied 
-        #     c[idx.c[k]] = discrete_unconstrained_dynamics(model, xk, uk, dt) - xkp1 
-        # end
 
         if (k in M1) # (not in J1) is implied 
             c[idx.c[k]] = constrained_discrete_dynamics(xk, xkp1, uk, model, fpos, left_foot_constraint, dt)
@@ -147,14 +140,7 @@ end
     
 function walker_equality_constraint(params::NamedTuple, Z::Vector)::Vector
     N, idx, xic, xg = params.N, params.idx, params.xic, params.xg 
-    
-    # TODO: stack up all of our equality constraints 
-    
-    # should be length 2*nx + (N-1)*nx + N 
-    # inital condition constraint (nx)       (constraint 1)
-    # terminal constraint         (nx)       (constraint 2)
-    # dynamics constraints        (N-1)*nx   (constraint 3-6)
-    # stance constraint           N          (constraint 7-8)
+
     [   
       Z[idx.x[1]] - xic;
       Z[idx.x[N]] - xg;
@@ -168,12 +154,8 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
     M1, M2 = params.M1, params.M2 
     
     cons = 6
-
     # create c in a ForwardDiff friendly way (check HW0)
     c = zeros(eltype(Z), cons*N)
-    
-    # TODO: add the length constraints shown in constraints (9-10)
-    # there are 2*N constraints here 
     
     iter = 1 
     for k = 1:cons:cons*N
@@ -209,7 +191,7 @@ model = (m1 = .5,  m2 = .5,  m3 = 1,  m4 = .5,  m5 = .5,  m6 = .01,
 nx = 14 
 nu = 4 
 # tf = 4.4
-tf = 6 
+tf = 3
 dt = 0.1
 t_vec = 0:dt:tf 
 N = length(t_vec)
@@ -281,9 +263,9 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 # Q = diagm([1; 10; fill(1.0, 5); 1; 10; fill(1.0, 5)]);
 # TODO: change this ↓ to maximize cg position along trajectory
 Q = diagm(fill(0,14))
-Q[1,1] = 10
-Q[2,2] = 10
-Q[5,5] = 10
+Q[1,1] = 1
+Q[2,2] = 1
+Q[5,5] = 1
 R = diagm(fill(1e-3,4))
 Qf = 1*Q;
 
@@ -305,20 +287,17 @@ params = (
     Uref = Uref
 )
 
-# TODO: primal bounds (constraint 11)
+# primal bounds (constraint 11)
 x_l = -Inf*ones(idx.nz)
 x_u =  Inf*ones(idx.nz)
-# for i = 1:N
-#     x_l[idx.x[i][[2]]] .= 0 
-# end
 
-# TODO: inequality constraint bounds
+# inequality constraint bounds
 cons = 6
-c_l = 0*ones(cons*N)
-# c_l = -Inf*ones(cons*N)
+# c_l = 0*ones(cons*N)
+c_l = -Inf*ones(cons*N)
 c_u = Inf*ones(cons*N)
 
-# TODO: initial guess, initialize z0 with the reference Xref, Uref 
+# initial guess, initialize z0 with the reference Xref, Uref 
 z0 = zeros(idx.nz)
 
 for i = 1:N 
@@ -329,7 +308,7 @@ for i = 1:N-1
 end
 
 # adding a little noise to the initial guess is a good idea 
-z0 = z0 + (1e-3)*randn(idx.nz)
+z0 = z0 + (1e-6)*randn(idx.nz)
 
 diff_type = :auto 
 
@@ -353,4 +332,4 @@ display(plot(t_vec[1:end-1], Um',xlabel = "time (s)", ylabel = "U",
 
 ##
 
-save("results.jld2", "X", X, "U", U, "Xm", Xm, "Um", Um, "Z", Z, "params", params)
+# save("results.jld2", "X", X, "U", U, "Xm", Xm, "Um", Um, "Z", Z, "params", params)

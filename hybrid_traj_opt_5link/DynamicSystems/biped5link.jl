@@ -156,37 +156,37 @@ function B_matrix()
     return B
 end
 
-function left_foot_constraint(q, model, fpos)
-    f1posX, f1posY, f2posX, f2posY = fpos
+# function left_foot_constraint(q, model, fpos)
+#     f1posX, f1posY, f2posX, f2posY = fpos
 
-    r = biped5link_kinematics(q, model)
-    r1 = r[1,:]
+#     r = biped5link_kinematics(q, model)
+#     r1 = r[1,:]
 
-    c1 = r1[1] - f1posX
-    c2 = r1[2] - f1posY
-    c3 = 0
-    c4 = 0
+#     c1 = r1[1] - f1posX
+#     c2 = r1[2] - f1posY
+#     c3 = 0
+#     c4 = 0
 
-    # C = [c1; c2; c3; c4]
-    C = [c1; c2]
-    return C
-end
+#     # C = [c1; c2; c3; c4]
+#     C = [c1; c2]
+#     return C
+# end
 
-function right_foot_constraint(q, model, fpos)
-    f1posX, f1posY, f2posX, f2posY = fpos
+# function right_foot_constraint(q, model, fpos)
+#     f1posX, f1posY, f2posX, f2posY = fpos
 
-    r = biped5link_kinematics(q, model)
-    r5 = r[5,:]
+#     r = biped5link_kinematics(q, model)
+#     r5 = r[5,:]
 
-    c1 = 0
-    c2 = 0
-    c3 = r5[1] - f2posX
-    c4 = r5[2] - f2posY
+#     c1 = 0
+#     c2 = 0
+#     c3 = r5[1] - f2posX
+#     c4 = r5[2] - f2posY
 
-    # C = [c1; c2; c3; c4]
-    C = [c3; c4]
-    return C
-end
+#     # C = [c1; c2; c3; c4]
+#     C = [c3; c4]
+#     return C
+# end
 
 function J_matrix(q, model, constraint, fpos)
     J  = FD.jacobian(_q -> constraint(_q, model, fpos), q)
@@ -242,7 +242,7 @@ function kkt_rhs(x, xₖ₊₁, u, model, h, constraint, fpos)
     B = B_matrix()
 
     kkt_rhs = [M*q̇ + h*B*u - h*N;
-                      -constraint(qₖ₊₁, model, fpos)]
+               -constraint(qₖ₊₁, model, fpos)]
     return kkt_rhs
 end
 
@@ -255,9 +255,9 @@ function kkt_lhs(x, xₖ₊₁, model, constraint, fpos, h)
     qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
 
     M = M_matrix(q, model)
-    J = J_matrix(qₖ₊₁, model, constraint, fpos)
+    J = J_matrix(q, model, constraint, fpos)
 
-    kkt_lhs = [M   -J'*h;
+    kkt_lhs = [M   J'*h;
                J*h zeros(size(J, 1), size(J, 1))]
     return kkt_lhs
 end

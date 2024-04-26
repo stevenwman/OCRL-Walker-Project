@@ -1,14 +1,5 @@
 include("biped5link.jl") # Defines hybrid system functions
 
-# function discrete_unconstrained_dynamics(model::NamedTuple, x::Vector, u::Vector, dt::Real)::Vector
-#     q, q̇ = x[1:7], x[8:14]
-#     return unconstrained_dynamics(q, q̇, u, model, dt)
-# end
-
-function discrete_unconstrained_dynamics(model::NamedTuple, x1::Vector, x2::Vector, u::Vector, dt::Real)::Vector
-    return hermite_simpson(model, unconstrained_ode, x1, x2, u, dt)
-end
-
 function reference_trajectory(model, xic, xg, dt, N, M1, tf)
     # creates a reference Xref and Uref for the walker 
     # for the reference, we're going to assume the walker is a rigid
