@@ -100,9 +100,9 @@ function walker_dynamics_constraints(params::NamedTuple, Z::Vector)::Vector
         # end
 
         if (k in M1) # (not in J1) is implied 
-            c[idx.c[k]] = implicit_euler(xk, xkp1, uk, model, fpos, left_foot_constraint, dt)
+            c[idx.c[k]] = constrained_discrete_dynamics(xk, xkp1, uk, model, fpos, left_foot_constraint, dt)
         elseif (k in M2) # (not in J1) is implied 
-            c[idx.c[k]] = implicit_euler(xk, xkp1, uk, model, fpos, right_foot_constraint, dt)
+            c[idx.c[k]] = constrained_discrete_dynamics(xk, xkp1, uk, model, fpos, right_foot_constraint, dt)
         end
     end
 
@@ -314,8 +314,8 @@ x_u =  Inf*ones(idx.nz)
 
 # TODO: inequality constraint bounds
 cons = 6
-# c_l = 0*ones(cons*N)
-c_l = -Inf*ones(cons*N)
+c_l = 0*ones(cons*N)
+# c_l = -Inf*ones(cons*N)
 c_u = Inf*ones(cons*N)
 
 # TODO: initial guess, initialize z0 with the reference Xref, Uref 
