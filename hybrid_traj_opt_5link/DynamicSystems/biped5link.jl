@@ -242,7 +242,7 @@ function kkt_rhs(x, xₖ₊₁, u, model, h, constraint, fpos)
     B = B_matrix()
 
     kkt_rhs = [M*q̇ + h*B*u - h*N;
-               -constraint(qₖ₊₁, model, fpos)]
+               -constraint(q, model, fpos)]
     return kkt_rhs
 end
 
@@ -255,10 +255,10 @@ function kkt_lhs(x, xₖ₊₁, model, constraint, fpos, h)
     qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
 
     M = M_matrix(q, model)
-    J = J_matrix(q, model, constraint, fpos)
+    Jc = J_matrix(qₖ₊₁, model, constraint, fpos)
 
-    kkt_lhs = [M   J'*h;
-               J*h zeros(size(J, 1), size(J, 1))]
+    kkt_lhs = [M   -Jc'*h;
+               Jc*h zeros(size(Jc, 1), size(Jc, 1))]
     return kkt_lhs
 end
 

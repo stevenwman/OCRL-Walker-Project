@@ -293,8 +293,8 @@ x_u =  Inf*ones(idx.nz)
 
 # inequality constraint bounds
 cons = 6
-# c_l = 0*ones(cons*N)
-c_l = -Inf*ones(cons*N)
+c_l = 0*ones(cons*N)
+# c_l = -Inf*ones(cons*N)
 c_u = Inf*ones(cons*N)
 
 # initial guess, initialize z0 with the reference Xref, Uref 
