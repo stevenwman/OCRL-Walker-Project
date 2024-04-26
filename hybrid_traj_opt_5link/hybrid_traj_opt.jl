@@ -144,7 +144,7 @@ function walker_equality_constraint(params::NamedTuple, Z::Vector)::Vector
     [   
       Z[idx.x[1]] - xic;
       Z[idx.x[N]] - xg;
-      walker_dynamics_constraints(params, Z)
+    #   walker_dynamics_constraints(params, Z)
     #   walker_stance_constraint(params, Z)
     ]
 end

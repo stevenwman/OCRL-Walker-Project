@@ -261,7 +261,7 @@ function kkt_lhs(x, xₖ₊₁, model, constraint, fpos, h)
     M = M_matrix(qₖ₊₁, model)
     Jc = J_matrix(qₖ₊₁, model, constraint, fpos)
 
-    kkt_lhs = [M   -Jc'*h;
+    kkt_lhs = [M    -Jc'*h;
                Jc*h zeros(size(Jc, 1), size(Jc, 1))]
     return kkt_lhs
 end
