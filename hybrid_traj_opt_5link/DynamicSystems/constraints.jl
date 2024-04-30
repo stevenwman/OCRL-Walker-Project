@@ -7,7 +7,7 @@ function reference_trajectory(model, xic, xg, dt, N, M1, tf)
     # horizonally at a constant velocity
     
     #assume Uref is just zeros for now, TODO: we can adjust this later to make it a sinusoial input or something
-    Uref = [[0; 0; 0; 0] for i = 1:(N-1)]
+    Uref = [zeros(6) for i = 1:(N-1)]
     
     Xref = [zeros(14) for i = 1:N]
     

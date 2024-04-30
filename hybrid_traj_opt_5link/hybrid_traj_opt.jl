@@ -64,9 +64,12 @@ function walker_cost(params::NamedTuple, Z::Vector)::Real
     for i = 1:(N-1)
         xi = Z[idx.x[i]]
         ui = Z[idx.u[i]]
-       
+
+        ui = ui[1:4]
+        Uref_i = Uref[i][1:4]
         J += 0.5*(xi - Xref[i])'*Q*(xi - Xref[i])
-        J += 0.5*(ui - Uref[i])'*R*(ui - Uref[i]) 
+        # J += 0.5*(ui - Uref[i])'*R*(ui - Uref[i])
+        J += 0.5*(ui - Uref_i)'*R*(ui - Uref_i) 
     end
     
     xn = Z[idx.x[N]]
@@ -89,13 +92,22 @@ function walker_dynamics_constraints(params::NamedTuple, Z::Vector)::Vector
         uk   = Z[idx.u[k]]
         xkp1 = Z[idx.x[k+1]]
         
+        λk = uk[5:6]
+        uk = uk[1:4]
+
         r = biped5link_kinematics(xk[1:7], model)
         fpos = vcat([r[1,:];r[5,:]]...)
 
+        # if (k in M1) # (not in J1) is implied 
+        #     c[idx.c[k]] = constrained_discrete_dynamics(xk, xkp1, uk, model, fpos, left_foot_constraint, dt)
+        # elseif (k in M2) # (not in J1) is implied 
+        #     c[idx.c[k]] = constrained_discrete_dynamics(xk, xkp1, uk, model, fpos, right_foot_constraint, dt)
+        # end
+
         if (k in M1) # (not in J1) is implied 
-            c[idx.c[k]] = constrained_discrete_dynamics(xk, xkp1, uk, model, fpos, left_foot_constraint, dt)
+            c[idx.c[k]] = dt_dynamics(xk, xkp1, uk, λk, model, fpos, left_foot_constraint, dt)
         elseif (k in M2) # (not in J1) is implied 
-            c[idx.c[k]] = constrained_discrete_dynamics(xk, xkp1, uk, model, fpos, right_foot_constraint, dt)
+            c[idx.c[k]] = dt_dynamics(xk, xkp1, uk, λk, model, fpos, right_foot_constraint, dt)
         end
     end
 
@@ -144,7 +156,7 @@ function walker_equality_constraint(params::NamedTuple, Z::Vector)::Vector
     [   
       Z[idx.x[1]] - xic;
       Z[idx.x[N]] - xg;
-    #   walker_dynamics_constraints(params, Z)
+      walker_dynamics_constraints(params, Z)
     #   walker_stance_constraint(params, Z)
     ]
 end
@@ -189,7 +201,7 @@ model = (m1 = .5,  m2 = .5,  m3 = 1,  m4 = .5,  m5 = .5,  m6 = .01,
 
 # problem size 
 nx = 14 
-nu = 4 
+nu = 4 + 2
 # tf = 4.4
 tf = 3
 dt = 0.1
