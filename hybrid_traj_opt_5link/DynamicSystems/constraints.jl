@@ -1,10 +1,5 @@
 include("biped5link.jl") # Defines hybrid system functions
 
-function discrete_unconstrained_dynamics(model::NamedTuple, x::Vector, u::Vector, dt::Real)::Vector
-    q, q̇ = x[1:7], x[8:14]
-    return unconstrained_dynamics(q, q̇, u, model, dt)
-end
-
 function reference_trajectory(model, xic, xg, dt, N, M1, tf)
     # creates a reference Xref and Uref for the walker 
     # for the reference, we're going to assume the walker is a rigid
@@ -12,7 +7,7 @@ function reference_trajectory(model, xic, xg, dt, N, M1, tf)
     # horizonally at a constant velocity
     
     #assume Uref is just zeros for now, TODO: we can adjust this later to make it a sinusoial input or something
-    Uref = [[0; 0; 0; 0] for i = 1:(N-1)]
+    Uref = [zeros(6) for i = 1:(N-1)]
     
     Xref = [zeros(14) for i = 1:N]
     
@@ -43,10 +38,12 @@ function reference_trajectory(model, xic, xg, dt, N, M1, tf)
         q = [new_x, y0, q1, q2, q3, q4, q5]
         r = biped5link_kinematics(q, model)
         new_y = y0 + height_stairs(r[1,1])
-        if i in M1
-            Xref[i] = [new_x , new_y, q1, q2, q3, q4, q5, 0, 0, 0, 0 ,0, 0, 0]
+        if i in M1 && i < 15
+            # Xref[i] = [new_x , new_y, q1, q2, q3, q4, q5, 0, 0, 0, 0 ,0, 0, 0]
+            Xref[i] = xic
         else
-            Xref[i] = [new_x , new_y, q5, q4, q3, q2, q1, 0, 0, 0, 0 ,0, 0, 0]
+            # Xref[i] = [new_x , new_y, q5, q4, q3, q2, q1, 0, 0, 0, 0 ,0, 0, 0]
+            Xref[i] = xg
         end
     end
         
@@ -70,7 +67,7 @@ function height_stairs(x_distance)
         height = 0.75
     end
 
-    # height = 0
+    height = 0
 
     return height
 end

@@ -144,13 +144,6 @@ end
 
 function B_matrix()
     # q = [x y t1 t2 t3 t4 t5]
-    # B = [ 0  0  0  0;
-    #       0  0  0  0;
-    #      -1  0  0  0;
-    #       1 -1  0  0;
-    #       0  0  1  0;
-    #       0  1 -1  1;
-    #       0  0  0 -1]
 
     B = [ 0  0   0  0;
           0  0   0  0;
@@ -165,6 +158,8 @@ end
 
 function left_foot_constraint(q, model, fpos)
     f1posX, f1posY, f2posX, f2posY = fpos
+
+    f1posY = height_stairs(f1posX)
 
     r = biped5link_kinematics(q, model)
     r1 = r[1,:]
@@ -181,6 +176,8 @@ end
 
 function right_foot_constraint(q, model, fpos)
     f1posX, f1posY, f2posX, f2posY = fpos
+
+    f2posY = height_stairs(f2posX)
 
     r = biped5link_kinematics(q, model)
     r5 = r[5,:]
@@ -208,98 +205,153 @@ function groundGuard(q, joint, model, ground_height)
     return impactCheck
 end
 
-# could be a misnomer, might just rename to "kkt_rhs"
-function kkt_conditions(q, q̇, u, model, h, constraint, fpos)
-    # rigth hand side of the KKT system:
-    # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
-    # [J(q)*h         0] [   λ] = [               -C(q)]
+function dt_dynamics(xₖ, xₖ₊₁, u, λ, model, fpos, constraint, h)
 
-    M = M_matrix(q, model)
-    N = N_matrix(q, q̇, model)
+    qₖ, q̇ₖ = xₖ[1:7], xₖ[8:14]
+    qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
+
+    M = M_matrix(qₖ₊₁, model)
+    N = N_matrix(qₖ₊₁, q̇ₖ₊₁, model)
     B = B_matrix()
+    J = J_matrix(qₖ₊₁, model, constraint, fpos)
 
-    kkt_conditions = [M*q̇ + h*B*u - h*N;
-                      -constraint(q, model, fpos)]
-    return kkt_conditions
+    q̈ₖ₊₁ = M \ (B*u - N + J'*λ)
+    q̇ₖ₊₁ = q̇ₖ + q̈ₖ₊₁*h
+    qₖ₊₁ = qₖ + q̇ₖ₊₁*h
+    res = [qₖ₊₁; q̇ₖ₊₁] - xₖ₊₁
+    return res
+
 end
 
-function kkt_jacobian(q, model, constraint, fpos, h)
-    # returns the left hand side of the KKT system:
-    # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
-    # [J(q)*h         0] [   λ] = [               -C(q)]
+# # could be a misnomer, might just rename to "kkt_rhs"
+# function kkt_conditions(q, q̇, u, model, h, constraint, fpos)
+#     # rigth hand side of the KKT system:
+#     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
+#     # [J(q)*h         0] [   λ] = [               -C(q)]
 
-    M = M_matrix(q, model)
-    J = J_matrix(q, model, constraint, fpos)
+#     M = M_matrix(q, model)
+#     N = N_matrix(q, q̇, model)
+#     B = B_matrix()
 
-    kkt_jac = [M   -J'*h;
-               J*h zeros(size(J, 1), size(J, 1))]
-    return kkt_jac
-end
+#     kkt_conditions = [M*q̇ + h*B*u - h*N;
+#                       -constraint(q, model, fpos)]
+#     return kkt_conditions
+# end
 
-function kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
-    # solve the KKT system for the newton step
-    kkt_jac = kkt_jacobian(q, model, constraint, fpos, h)
-    kkt_cond = kkt_conditions(q, q̇, u, model, h, constraint, fpos)
+# function kkt_jacobian(q, model, constraint, fpos, h)
+#     # returns the left hand side of the KKT system:
+#     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
+#     # [J(q)*h         0] [   λ] = [               -C(q)]
 
-    newton_step = kkt_jac \ kkt_cond
-    return newton_step
-end
+#     M = M_matrix(q, model)
+#     J = J_matrix(q, model, constraint, fpos)
 
-function unconstrained_dynamics(q, q̇, u, model, h)
-    M = M_matrix(q, model)
-    N = N_matrix(q, q̇, model)
-    B = B_matrix()
+#     kkt_jac = [M   -J'*h;
+#                J*h zeros(size(J, 1), size(J, 1))]
+#     return kkt_jac
+# end
 
-    q̇ₖ₊₁ = q̇ + M \ (B*u - N)*h^2
-    qₖ₊₁ = q + q̇*h 
-    xₖ₊₁ = [qₖ₊₁; q̇ₖ₊₁]
-    return xₖ₊₁
-end
+# function kkt_rhs(x, xₖ₊₁, u, model, constraint, fpos, h)
+#     # rigth hand side of the KKT system:
+#     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
+#     # [J(q)*h         0] [   λ] = [               -C(q)]
 
-function forward_dynamics(q, q̇, u, model, fpos, constraint, h, tol=1e-9, max_iter=100, verbose=true)
-    # solve the KKT system for the newton step
-    old_step = kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
-    newton_step = old_step
-    for i = 1:max_iter-1
-        q̇ₖ₊₁ = newton_step[1:7]
-        qₖ₊₁ = q + q̇ₖ₊₁*h
+#     q, q̇ = x[1:7], x[8:14]
+#     qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
 
-        newton_step = kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
-        # @show newton_step
-        step_change = norm(newton_step - old_step)
-        old_step = newton_step
+#     M = M_matrix(qₖ₊₁, model)
+#     N = N_matrix(qₖ₊₁, q̇ₖ₊₁, model)
+#     B = B_matrix()
 
-        if verbose 
-            print("iter: $i    |r|: $step_change   \n")
-        end
+#     kkt_rhs = [M*q̇ + h*B*u - h*N;
+#                -constraint(q, model, fpos)]
+#     return kkt_rhs
+# end
+
+# function kkt_lhs(x, xₖ₊₁, model, constraint, fpos, h)
+#     # returns the left hand side of the KKT system:
+#     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
+#     # [J(q)*h         0] [   λ] = [               -C(q)]
+
+#     q, q̇ = x[1:7], x[8:14]
+#     qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
+
+#     M = M_matrix(qₖ₊₁, model)
+#     Jc = J_matrix(qₖ₊₁, model, constraint, fpos)
+
+#     kkt_lhs = [M    -Jc'*h;
+#                Jc*h zeros(size(Jc, 1), size(Jc, 1))]
+#     return kkt_lhs
+# end
+
+# function constrained_discrete_dynamics(x, xₖ₊₁, u, model, fpos, constraint, h)
+#     # solve the KKT system for the newton step
+#     kkt_jac = kkt_lhs(x, xₖ₊₁, model, constraint, fpos, h)
+#     kkt_cond = kkt_rhs(x, xₖ₊₁, u, model, constraint, fpos, h)
+
+#     żₖ₊₁ = kkt_jac \ kkt_cond
+#     q̇ₖ₊₁ = żₖ₊₁[1:7]
+
+#     qₖ = x[1:7]
+#     qₖ₊₁ = qₖ + q̇ₖ₊₁*h
+#     res = [qₖ₊₁; q̇ₖ₊₁] - xₖ₊₁
+
+#     return res
+# end
+
+# function kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
+#     # solve the KKT system for the newton step
+#     kkt_jac = kkt_jacobian(q, model, constraint, fpos, h)
+#     kkt_cond = kkt_conditions(q, q̇, u, model, h, constraint, fpos)
+
+#     newton_step = kkt_jac \ kkt_cond
+#     return newton_step
+# end
+
+# function forward_dynamics(q, q̇, u, model, fpos, constraint, h, tol=1e-9, max_iter=100, verbose=true)
+#     # solve the KKT system for the newton step
+#     old_step = kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
+#     newton_step = old_step
+#     for i = 1:max_iter-1
+#         q̇ₖ₊₁ = newton_step[1:7]
+#         qₖ₊₁ = q + q̇ₖ₊₁*h
+
+#         newton_step = kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
+#         # @show newton_step
+#         step_change = norm(newton_step - old_step)
+#         old_step = newton_step
+
+#         if verbose 
+#             print("iter: $i    |r|: $step_change   \n")
+#         end
         
-        # check convergence
-        if norm(step_change) < tol
-            λ = newton_step[8:end]
-            return qₖ₊₁, q̇ₖ₊₁, λ
-        end
-    end
-    error("Newton iteration did not converge")
-end
+#         # check convergence
+#         if norm(step_change) < tol
+#             λ = newton_step[8:end]
+#             return qₖ₊₁, q̇ₖ₊₁, λ
+#         end
+#     end
+#     error("Newton iteration did not converge")
+# end
 
-function simulate(q, q̇, u, model, fpos, constraint, h, T)
-    t = 0
-    q_hist = zeros(T, 7)
-    q̇_hist = zeros(T, 7)
-    λ_hist = zeros(T, 2)
+# function simulate(q, q̇, u, model, fpos, constraint, h, T)
+#     t = 0
+#     q_hist = zeros(T, 7)
+#     q̇_hist = zeros(T, 7)
+#     λ_hist = zeros(T, 2)
 
-    q_hist[1, :] = q
-    q̇_hist[1, :] = q̇
+#     q_hist[1, :] = q
+#     q̇_hist[1, :] = q̇
 
-    for i = 2:T
-        print("t: $t \n")
-        t += h
-        q, q̇, λ = forward_dynamics(q, q̇, u(t), model, fpos, constraint, h)
-        q_hist[i, :] = q
-        q̇_hist[i, :] = q̇
-        λ_hist[i, :] = λ
-    end
+#     for i = 2:T
+#         print("t: $t \n")
+#         t += h
+#         q, q̇, λ = forward_dynamics(q, q̇, u(t), model, fpos, constraint, h)
+#         q_hist[i, :] = q
+#         q̇_hist[i, :] = q̇
+#         λ_hist[i, :] = λ
+#     end
 
-    return q_hist, q̇_hist, λ_hist
-end
+#     return q_hist, q̇_hist, λ_hist
+# end
 
