@@ -197,14 +197,6 @@ function J_matrix(q, model, constraint, fpos)
     return J
 end
 
-function groundGuard(q, joint, model, ground_height)
-    joint_pos = biped5link_kinematics(q, model)[joint]
-    joint_x = joint_pos[1]
-    joint_y = joint_pos[2]
-    impactCheck = joint_y - ground_height(joint_x)
-    return impactCheck
-end
-
 # function dt_dynamics(xₖ, xₖ₊₁, u, λ, model, fpos, constraint, h)
 
 #     qₖ, q̇ₖ = xₖ[1:7], xₖ[8:14]
@@ -223,6 +215,22 @@ end
 
 # end
 
+function free_dynamics_residual(xₖ, xₖ₊₁, uk, model, dt)
+    qₖ, q̇ₖ = xₖ[1:7], xₖ[8:14]
+    qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
+
+    M = M_matrix(qₖ, model)
+    N = N_matrix(qₖ, q̇ₖ, model)
+    B = B_matrix()
+
+    res_dyn = (-M*(q̇ₖ₊₁ - q̇ₖ) + (B*uk - N)*dt)
+    res_pos = qₖ + q̇ₖ₊₁*dt - qₖ₊₁
+    # res_con = constraint(qₖ₊₁, model, fpos)
+
+    # return [res_dyn; res_pos; res_con]
+    return [res_dyn; res_pos]
+end
+
 function dynamics_residual(xₖ, xₖ₊₁, uk, λk, model, fpos, constraint, dt)
     qₖ, q̇ₖ = xₖ[1:7], xₖ[8:14]
     qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
@@ -230,13 +238,15 @@ function dynamics_residual(xₖ, xₖ₊₁, uk, λk, model, fpos, constraint, d
     M = M_matrix(qₖ, model)
     N = N_matrix(qₖ, q̇ₖ, model)
     B = B_matrix()
-    J = J_matrix(qₖ, model, constraint, fpos)
+    # J = J_matrix(qₖ, model, constraint, fpos)
+    J = J_matrix(qₖ₊₁, model, constraint, fpos)
 
     res_dyn = (-M*(q̇ₖ₊₁ - q̇ₖ) + (B*uk - N - J'*λk)*dt)
-    # res_pos = qₖ₊₁ - qₖ - q̇ₖ*dt
-    res_con = constraint(qₖ₊₁, model, fpos)
+    res_pos = qₖ + q̇ₖ₊₁*dt - qₖ₊₁
+    # res_con = constraint(qₖ₊₁, model, fpos)
 
-    return [res_dyn; res_con]
+    # return [res_dyn; res_pos; res_con]
+    return [res_dyn; res_pos]
 end
 
 # # could be a misnomer, might just rename to "kkt_rhs"

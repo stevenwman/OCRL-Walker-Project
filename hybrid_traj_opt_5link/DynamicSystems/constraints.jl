@@ -8,7 +8,6 @@ function reference_trajectory(model, xic, xg, dt, N, M1, tf)
     
     #assume Uref is just zeros for now, TODO: we can adjust this later to make it a sinusoial input or something
     Uref = [zeros(6) for i = 1:(N-1)]
-    
     Xref = [zeros(14) for i = 1:N]
     
     # set first and last timesteps
@@ -21,8 +20,8 @@ function reference_trajectory(model, xic, xg, dt, N, M1, tf)
 
     #determine the fixed joint angles
 
-    q1 = 280 * (π/180)
-    q2 = 300 * (π/180)
+    q1 = 270 * (π/180)
+    q2 = 280 * (π/180)
     q3 = 90 * (π/180)
     q4 = 250 * (π/180)
     q5 = 220 * (π/180)
@@ -38,12 +37,12 @@ function reference_trajectory(model, xic, xg, dt, N, M1, tf)
         q = [new_x, y0, q1, q2, q3, q4, q5]
         r = biped5link_kinematics(q, model)
         new_y = y0 + height_stairs(r[1,1])
-        if i in M1 && i < 15
-            # Xref[i] = [new_x , new_y, q1, q2, q3, q4, q5, 0, 0, 0, 0 ,0, 0, 0]
-            Xref[i] = xic
+        if i in M1
+            Xref[i] = [new_x , new_y, q1, q2, q3, q4, q5, 0, 0, 0, 0 ,0, 0, 0]
+            # Xref[i] = xic
         else
-            # Xref[i] = [new_x , new_y, q5, q4, q3, q2, q1, 0, 0, 0, 0 ,0, 0, 0]
-            Xref[i] = xg
+            Xref[i] = [new_x , new_y, q5, q4, q3, q2, q1, 0, 0, 0, 0 ,0, 0, 0]
+            # Xref[i] = xg
         end
     end
         
