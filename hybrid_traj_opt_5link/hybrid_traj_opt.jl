@@ -275,7 +275,7 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 # LQR cost function (tracking Xref, Uref)
 # Q = diagm([1; 10; fill(1.0, 5); 1; 10; fill(1.0, 5)]);
 # TODO: change this ↓ to maximize cg position along trajectory
-Q = diagm(fill(100,14))
+Q = diagm(fill(1,14))
 # Q[1,1] = 1
 # Q[2,2] = 1
 # Q[5,5] = 1
