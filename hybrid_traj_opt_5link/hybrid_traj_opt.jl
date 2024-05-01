@@ -46,7 +46,8 @@ function create_idx(nx,nu,N)
     u = [(i - 1) * (nx + nu) .+ ((nx + 1):(nx + nu)) for i = 1:(N - 1)]
     
     # constraint indexing for the (N-1) dynamics constraints when stacked up
-    c = [(i - 1) * (nx) .+ (1 : nx) for i = 1:(N - 1)]
+    # c = [(i - 1) * (nx) .+ (1 : nx) for i = 1:(N - 1)]
+    c = [(i - 1) * (9) .+ (1 : 9) for i = 1:(N - 1)]
     nc = (N - 1) * nx # (N-1)*nx 
     
     return (nx=nx, nu=nu, N=N, nz=nz, nc=nc, x=x, u=u, c=c)
@@ -74,7 +75,7 @@ function walker_cost(params::NamedTuple, Z::Vector)::Real
     
     xn = Z[idx.x[N]]
     J += 0.5*(xn - xg)'*Qf*(xn - xg)
-        
+
     return J 
 end
 
@@ -105,9 +106,9 @@ function walker_dynamics_constraints(params::NamedTuple, Z::Vector)::Vector
         # end
 
         if (k in M1) # (not in J1) is implied 
-            c[idx.c[k]] = dt_dynamics(xk, xkp1, uk, λk, model, fpos, left_foot_constraint, dt)
+            c[idx.c[k]] = dynamics_residual(xk, xkp1, uk, λk, model, fpos, left_foot_constraint, dt)
         elseif (k in M2) # (not in J1) is implied 
-            c[idx.c[k]] = dt_dynamics(xk, xkp1, uk, λk, model, fpos, right_foot_constraint, dt)
+            c[idx.c[k]] = dynamics_residual(xk, xkp1, uk, λk, model, fpos, right_foot_constraint, dt)
         end
     end
 

@@ -205,22 +205,38 @@ function groundGuard(q, joint, model, ground_height)
     return impactCheck
 end
 
-function dt_dynamics(xₖ, xₖ₊₁, u, λ, model, fpos, constraint, h)
+# function dt_dynamics(xₖ, xₖ₊₁, u, λ, model, fpos, constraint, h)
 
+#     qₖ, q̇ₖ = xₖ[1:7], xₖ[8:14]
+#     qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
+
+#     M = M_matrix(qₖ₊₁, model)
+#     N = N_matrix(qₖ₊₁, q̇ₖ₊₁, model)
+#     B = B_matrix()
+#     J = J_matrix(qₖ₊₁, model, constraint, fpos)
+
+#     q̈ₖ₊₁ = M \ (B*u - N + J'*λ)
+#     q̇ₖ₊₁ = q̇ₖ + q̈ₖ₊₁*h
+#     qₖ₊₁ = qₖ + q̇ₖ₊₁*h
+#     res = [qₖ₊₁; q̇ₖ₊₁] - xₖ₊₁
+#     return res
+
+# end
+
+function dynamics_residual(xₖ, xₖ₊₁, uk, λk, model, fpos, constraint, dt)
     qₖ, q̇ₖ = xₖ[1:7], xₖ[8:14]
     qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
 
-    M = M_matrix(qₖ₊₁, model)
-    N = N_matrix(qₖ₊₁, q̇ₖ₊₁, model)
+    M = M_matrix(qₖ, model)
+    N = N_matrix(qₖ, q̇ₖ, model)
     B = B_matrix()
-    J = J_matrix(qₖ₊₁, model, constraint, fpos)
+    J = J_matrix(qₖ, model, constraint, fpos)
 
-    q̈ₖ₊₁ = M \ (B*u - N + J'*λ)
-    q̇ₖ₊₁ = q̇ₖ + q̈ₖ₊₁*h
-    qₖ₊₁ = qₖ + q̇ₖ₊₁*h
-    res = [qₖ₊₁; q̇ₖ₊₁] - xₖ₊₁
-    return res
+    res_dyn = (-M*(q̇ₖ₊₁ - q̇ₖ) + (B*uk - N - J'*λk)*dt)
+    # res_pos = qₖ₊₁ - qₖ - q̇ₖ*dt
+    res_con = constraint(qₖ₊₁, model, fpos)
 
+    return [res_dyn; res_con]
 end
 
 # # could be a misnomer, might just rename to "kkt_rhs"
