@@ -49,7 +49,7 @@ function create_idx(nx,nu,N)
     # c = [(i - 1) * (nx) .+ (1 : nx) for i = 1:(N - 1)]
     # nc = (N - 1) * nx # (N-1)*nx 
 
-    dyn_cons = 16
+    dyn_cons = 18
     c = [(i - 1) * (dyn_cons) .+ (1 :dyn_cons) for i = 1:(N - 1)]
     nc = (N - 1) * dyn_cons # (N-1)*nx 
     
@@ -58,6 +58,7 @@ end
 
 function walker_cost(params::NamedTuple, Z::Vector)::Real
     # cost function 
+
     idx, N, xg = params.idx, params.N, params.xg
     Q, R, Qf = params.Q, params.R, params.Qf
     Xref,Uref = params.Xref, params.Uref
@@ -97,7 +98,7 @@ function walker_dynamics_constraints(params::NamedTuple, Z::Vector)::Vector
         uk   = Z[idx.u[k]]
         xkp1 = Z[idx.x[k+1]]
         
-        λk = uk[5:6]
+        λk = uk[5:end]
         uk = uk[1:4]
 
         r = biped5link_kinematics(xk[1:7], model)
@@ -109,21 +110,19 @@ function walker_dynamics_constraints(params::NamedTuple, Z::Vector)::Vector
         #     c[idx.c[k]] = constrained_discrete_dynamics(xk, xkp1, uk, model, fpos, right_foot_constraint, dt)
         # end
 
-        # if (k in J1)
-        #     c[idx.c[k]] = dynamics_residual(xk, xkp1, uk, λk, model, fpos, right_foot_constraint, dt)
-        # elseif (k in J2)
-        #     c[idx.c[k]] = dynamics_residual(xk, xkp1, uk, λk, model, fpos, left_foot_constraint, dt)
-        # elseif (k in M1) # (not in J1) is implied 
-        #     c[idx.c[k]] = dynamics_residual(xk, xkp1, uk, λk, model, fpos, left_foot_constraint, dt)
-        # elseif (k in M2) # (not in J1) is implied 
-        #     c[idx.c[k]] = dynamics_residual(xk, xkp1, uk, λk, model, fpos, right_foot_constraint, dt)
-        # end
-
-        if (k in M1) # (not in J1) is implied 
+        if (k in J1) || (k in J2)
+            c[idx.c[k]] = dynamics_residual(xk, xkp1, uk, λk, model, fpos, both_foot_constraint, dt)
+        elseif (k in M1) # (not in J1) is implied 
             c[idx.c[k]] = dynamics_residual(xk, xkp1, uk, λk, model, fpos, left_foot_constraint, dt)
         elseif (k in M2) # (not in J1) is implied 
             c[idx.c[k]] = dynamics_residual(xk, xkp1, uk, λk, model, fpos, right_foot_constraint, dt)
         end
+
+        # if (k in M1) # (not in J1) is implied 
+        #     c[idx.c[k]] = dynamics_residual(xk, xkp1, uk, λk, model, fpos, left_foot_constraint, dt)
+        # elseif (k in M2) # (not in J1) is implied 
+        #     c[idx.c[k]] = dynamics_residual(xk, xkp1, uk, λk, model, fpos, right_foot_constraint, dt)
+        # end
     end
 
     return c 
@@ -216,9 +215,9 @@ model = (m1 = .5,  m2 = .5,  m3 = 1,  m4 = .5,  m5 = .5,  m6 = .01,
 
 # problem size 
 nx = 14 
-nu = 4 + 2
+nu = 4 + 2 + 2
 # tf = 4.4
-tf = 3
+tf = 4
 dt = 0.1
 t_vec = 0:dt:tf 
 N = length(t_vec)
@@ -243,7 +242,7 @@ dx0 = dy0 = dq1 = dq2 = dq3 = dq4 = dq5 = 0
 xic = [ x0;  y0;  q1;  q2;  q3;  q4;  q5; 
         dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 # dx = 5 # suppose our goal is to move like 5 meters forward
-dx = 0.5 # suppose our goal is to move like 5 meters forward
+dx = 4 # suppose our goal is to move like 5 meters forward
 
 # D = [x0 + dx, y0]
 # D_norm = norm(D)
@@ -254,11 +253,10 @@ dx = 0.5 # suppose our goal is to move like 5 meters forward
 # C = acos( (D_norm^2 + model.l23^2 - model.l12^2) / (2 * D_norm * model.l23) )
 # q2 = C + π + ϕ
 
-xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q1;  q2;  q3;  q4;  q5; 
+# xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q1;  q2;  q3;  q4;  q5; 
+#             dx0; dy0; dq1; dq2; dq3; dq4; dq
+xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q5;  q4;  q3;  q2;  q1; 
             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
-
-# xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q5;  q4;  q3;  q2;  q1; 
-#             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
 # index sets 
 # M1 = vcat([1:20, 41:60, 81:100]...)
@@ -276,30 +274,20 @@ xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q1;  q2;  q3;  q4;  q5;
 # J1 = [10, 32]
 # J2 = [20] 
 
-# M1 = vcat([1:15,  31:45]...)
-# M2 = vcat([16:30, 46:61]...)
-# J1 = [15, 45]
-# J2 = [30, 62] 
+M1 = vcat([1:10,  21:30]...)
+M2 = vcat([11:20, 31:41]...)
+J1 = [10, 30]
+J2 = [20, 42] 
 
 # M1 = vcat([1:30]...)
 # M2 = vcat([31:61]...)
 # J1 = [30]
 # J2 = [62] 
 
-# M1 = vcat([1:10]...)
-# M2 = vcat([11:21]...)
-# J1 = [10]
-# J2 = [22]
-
-M1 = vcat([1:15]...)
-M2 = vcat([16:31]...)
-J1 = [15]
-J2 = [32]
-
-# M1 = vcat([1:61]...)
-# M2 = [62]
-# J1 = [62]
-# J2 = [62] 
+# M1 = vcat([1:15]...)
+# M2 = vcat([16:31]...)
+# J1 = [15]
+# J2 = [32]
 
 # reference trajectory 
 Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
@@ -309,12 +297,14 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 # LQR cost function (tracking Xref, Uref)
 # Q = diagm([1; 10; fill(1.0, 5); 1; 10; fill(1.0, 5)]);
 # TODO: change this ↓ to maximize cg position along trajectory
-Q = diagm(fill(1,14)) * 0
-Q[1,1] = 1
-Q[2,2] = 1
-Q[5,5] = 1
+Q = diagm(fill(1,14))
+Qf = 1*Q
+# Q = 0*Q
+# Q[1,1] = 1
+# Q[2,2] = 1
+# Q[5,5] = 1
 R = diagm(fill(1e-3,4))
-Qf = 1*Q;
+
 
 # create indexing utilities 
 idx = create_idx(nx,nu,N)

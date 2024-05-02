@@ -170,7 +170,7 @@ function left_foot_constraint(q, model, fpos)
     c4 = 0
 
     # C = [c1; c2; c3; c4]
-    C = [c1; c2]
+    C = [c1; c2; 0; 0]
     return C
 end
 
@@ -188,7 +188,27 @@ function right_foot_constraint(q, model, fpos)
     c4 = r5[2] - f2posY
 
     # C = [c1; c2; c3; c4]
-    C = [c3; c4]
+    C = [0; 0; c3; c4]
+    return C
+end
+
+function both_foot_constraint(q, model, fpos)
+    f1posX, f1posY, f2posX, f2posY = fpos
+
+    f1posY = height_stairs(f1posX)
+    f2posY = height_stairs(f2posX)
+
+    r = biped5link_kinematics(q, model)
+    r1 = r[1,:]
+    r5 = r[5,:]
+
+    c1 = r1[1] - f1posX
+    c2 = r1[2] - f1posY
+    c3 = r5[1] - f2posX
+    c4 = r5[2] - f2posY
+
+    C = [c1; c2; c3; c4]
+    # C = [c3; c4]
     return C
 end
 
@@ -233,23 +253,23 @@ function dynamics_residual(xₖ, xₖ₊₁, uk, λk, model, fpos, constraint, d
     # return [res_dyn; res_con]
 end
 
-function transition_dynamics_residual(xₖ, xₖ₊₁, uk, λk, model, fpos, constraint, dt)
-    qₖ, q̇ₖ = xₖ[1:7], xₖ[8:14]
-    qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
+# function transition_dynamics_residual(xₖ, xₖ₊₁, uk, λk, model, fpos, constraint, dt)
+#     qₖ, q̇ₖ = xₖ[1:7], xₖ[8:14]
+#     qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
 
-    M = M_matrix(qₖ, model)
-    N = N_matrix(qₖ, q̇ₖ, model)
-    B = B_matrix()
-    J = J_matrix(qₖ, model, constraint, fpos)
+#     M = M_matrix(qₖ, model)
+#     N = N_matrix(qₖ, q̇ₖ, model)
+#     B = B_matrix()
+#     J = J_matrix(qₖ, model, constraint, fpos)
 
-    res_dyn = -M*(q̇ₖ₊₁ - q̇ₖ) + (B*uk - N - J'*λk)*dt
-    res_pos = qₖ + q̇ₖ₊₁*dt - qₖ₊₁
-    res_con = constraint(qₖ, model, fpos)
+#     res_dyn = -M*(q̇ₖ₊₁ - q̇ₖ) + (B*uk - N - J'*λk)*dt
+#     res_pos = qₖ + q̇ₖ₊₁*dt - qₖ₊₁
+#     res_con = constraint(qₖ, model, fpos)
 
-    # return [res_dyn; res_pos]
-    # return [res_dyn; res_con]
-    return [res_dyn; res_pos; res_con]
-end
+#     # return [res_dyn; res_pos]
+#     # return [res_dyn; res_con]
+#     return [res_dyn; res_pos; res_con]
+# end
 
 # # could be a misnomer, might just rename to "kkt_rhs"
 # function kkt_conditions(q, q̇, u, model, h, constraint, fpos)
