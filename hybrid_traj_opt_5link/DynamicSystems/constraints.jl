@@ -39,10 +39,8 @@ function reference_trajectory(model, xic, xg, dt, N, M1, tf)
         new_y = y0 + height_stairs(r[1,1])
         if i in M1
             Xref[i] = [new_x , new_y, q1, q2, q3, q4, q5, 0, 0, 0, 0 ,0, 0, 0]
-            # Xref[i] = xic
         else
             Xref[i] = [new_x , new_y, q5, q4, q3, q2, q1, 0, 0, 0, 0 ,0, 0, 0]
-            # Xref[i] = xg
         end
     end
         

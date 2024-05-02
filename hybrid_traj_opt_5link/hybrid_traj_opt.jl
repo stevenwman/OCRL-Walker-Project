@@ -104,12 +104,6 @@ function walker_dynamics_constraints(params::NamedTuple, Z::Vector)::Vector
         r = biped5link_kinematics(xk[1:7], model)
         fpos = vcat([r[1,:];r[5,:]]...)
 
-        # if (k in M1) # (not in J1) is implied 
-        #     c[idx.c[k]] = constrained_discrete_dynamics(xk, xkp1, uk, model, fpos, left_foot_constraint, dt)
-        # elseif (k in M2) # (not in J1) is implied 
-        #     c[idx.c[k]] = constrained_discrete_dynamics(xk, xkp1, uk, model, fpos, right_foot_constraint, dt)
-        # end
-
         if (k in J1) || (k in J2)
             c[idx.c[k]] = dynamics_residual(xk, xkp1, uk, λk, model, fpos, both_foot_constraint, dt)
         elseif (k in M1) # (not in J1) is implied 
@@ -118,51 +112,10 @@ function walker_dynamics_constraints(params::NamedTuple, Z::Vector)::Vector
             c[idx.c[k]] = dynamics_residual(xk, xkp1, uk, λk, model, fpos, right_foot_constraint, dt)
         end
 
-        # if (k in M1) # (not in J1) is implied 
-        #     c[idx.c[k]] = dynamics_residual(xk, xkp1, uk, λk, model, fpos, left_foot_constraint, dt)
-        # elseif (k in M2) # (not in J1) is implied 
-        #     c[idx.c[k]] = dynamics_residual(xk, xkp1, uk, λk, model, fpos, right_foot_constraint, dt)
-        # end
     end
 
     return c 
 end
-
-# function walker_stance_constraint(params::NamedTuple, Z::Vector)::Vector
-#     idx, N, dt = params.idx, params.N, params.dt
-#     M1, M2 = params.M1, params.M2 
-#     J1, J2 = params.J1, params.J2 
-    
-#     model = params.model 
-
-#     # create c in a ForwardDiff friendly way (check HW0)
-#     c = zeros(eltype(Z), 2*N)
-    
-#     # TODO: add walker stance constraints (constraints 7-8 in the opti problem)
-#     for i = 1:2:2*(N-1) 
-#         k = Int((i+1)/2)
-#         x = Z[idx.x[k]]
-#         xkp1 = Z[idx.x[k+1]]
-#         q = x[1:7]
-#         qkp1 = xkp1[1:7]
-#         r = biped5link_kinematics(q, model)
-#         rkp1 = biped5link_kinematics(qkp1, model)
-#         if (k in J1) || (k in J2)
-#             c[i] = r[1,2] - height_stairs(r[1,1])
-#             c[i+1] = r[5,2] - height_stairs(r[5,1])
-#         elseif (k in M1)
-#             foot_diff = r[1,:] - rkp1[1,:]
-#             c[i] = foot_diff[1]
-#             c[i+1] = r[1,2] - height_stairs(r[1,1])
-#         elseif (k in M2)
-#             foot_diff = r[5,:] - rkp1[5,:]
-#             c[i] = foot_diff[1]
-#             c[i+1] = r[5,2] - height_stairs(r[5,1])
-#         end
-#     end
-
-#     return c
-# end
     
 function walker_equality_constraint(params::NamedTuple, Z::Vector)::Vector
     N, idx, xic, xg = params.N, params.idx, params.xic, params.xg 
@@ -171,7 +124,6 @@ function walker_equality_constraint(params::NamedTuple, Z::Vector)::Vector
       Z[idx.x[1]] - xic;
       Z[idx.x[N]] - xg;
       walker_dynamics_constraints(params, Z)
-    #   walker_stance_constraint(params, Z)
     ]
 end
 
@@ -197,12 +149,6 @@ function walker_inequality_constraint(params::NamedTuple, Z::Vector)::Vector
 
         c[k+4] = θ2 - θ1 + π/10
         c[k+5] = θ4 - θ5 + π/10
-
-        # c[k+8] = θ1 - (θ2 - π) - 3*π/5
-        # c[k+9] = θ5 - (θ4 - π) - 3*π/5
-
-        # c[k+6] = θ3 - (π/2 - π/6) 
-        # c[k+7] = (π/2 + π/6) - θ3
     end
     return c
 end
@@ -259,35 +205,11 @@ xg = [x0 + dx;  y0 + height_stairs(x0 + dx);  q5;  q4;  q3;  q2;  q1;
             dx0; dy0; dq1; dq2; dq3; dq4; dq5]
 
 # index sets 
-# M1 = vcat([1:20, 41:60, 81:100]...)
-# M2 = vcat([21:40, 61:80, 101:121]...)
-# J1 = [20, 60, 100]
-# J2 = [40, 80] 
-
-# M1 = vcat([1:10, 21:30]...)
-# M2 = vcat([11:20, 31:41]...)
-# J1 = [10, 30]
-# J2 = [20, 42] 
-
-# M1 = vcat([1:10, 21:31]...)
-# M2 = vcat([11:20]...)
-# J1 = [10, 32]
-# J2 = [20] 
 
 M1 = vcat([1:10,  21:30]...)
 M2 = vcat([11:20, 31:41]...)
 J1 = [10, 30]
 J2 = [20, 42] 
-
-# M1 = vcat([1:30]...)
-# M2 = vcat([31:61]...)
-# J1 = [30]
-# J2 = [62] 
-
-# M1 = vcat([1:15]...)
-# M2 = vcat([16:31]...)
-# J1 = [15]
-# J2 = [32]
 
 # reference trajectory 
 Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
@@ -299,10 +221,6 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 # TODO: change this ↓ to maximize cg position along trajectory
 Q = diagm(fill(1,14))
 Qf = 1*Q
-# Q = 0*Q
-# Q[1,1] = 1
-# Q[2,2] = 1
-# Q[5,5] = 1
 R = diagm(fill(1e-3,4))
 
 
@@ -331,7 +249,6 @@ x_u =  Inf*ones(idx.nz)
 # inequality constraint bounds
 cons = 6
 c_l = 0*ones(cons*N)
-# c_l = -Inf*ones(cons*N)
 c_u = Inf*ones(cons*N)
 
 # initial guess, initialize z0 with the reference Xref, Uref 
@@ -369,4 +286,4 @@ display(plot(t_vec[1:end-1], Um',xlabel = "time (s)", ylabel = "U",
 
 ##
 
-# save("results.jld2", "X", X, "U", U, "Xm", Xm, "Um", Um, "Z", Z, "params", params)
+save("results.jld2", "X", X, "U", U, "Xm", Xm, "Um", Um, "Z", Z, "params", params)

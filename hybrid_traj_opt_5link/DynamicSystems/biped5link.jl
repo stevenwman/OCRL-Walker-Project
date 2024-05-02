@@ -169,7 +169,6 @@ function left_foot_constraint(q, model, fpos)
     c3 = 0
     c4 = 0
 
-    # C = [c1; c2; c3; c4]
     C = [c1; c2; 0; 0]
     return C
 end
@@ -187,7 +186,6 @@ function right_foot_constraint(q, model, fpos)
     c3 = r5[1] - f2posX
     c4 = r5[2] - f2posY
 
-    # C = [c1; c2; c3; c4]
     C = [0; 0; c3; c4]
     return C
 end
@@ -208,7 +206,6 @@ function both_foot_constraint(q, model, fpos)
     c4 = r5[2] - f2posY
 
     C = [c1; c2; c3; c4]
-    # C = [c3; c4]
     return C
 end
 
@@ -216,24 +213,6 @@ function J_matrix(q, model, constraint, fpos)
     J  = FD.jacobian(_q -> constraint(_q, model, fpos), q)
     return J
 end
-
-# function dt_dynamics(xₖ, xₖ₊₁, u, λ, model, fpos, constraint, h)
-
-#     qₖ, q̇ₖ = xₖ[1:7], xₖ[8:14]
-#     qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
-
-#     M = M_matrix(qₖ₊₁, model)
-#     N = N_matrix(qₖ₊₁, q̇ₖ₊₁, model)
-#     B = B_matrix()
-#     J = J_matrix(qₖ₊₁, model, constraint, fpos)
-
-#     q̈ₖ₊₁ = M \ (B*u - N + J'*λ)
-#     q̇ₖ₊₁ = q̇ₖ + q̈ₖ₊₁*h
-#     qₖ₊₁ = qₖ + q̇ₖ₊₁*h
-#     res = [qₖ₊₁; q̇ₖ₊₁] - xₖ₊₁
-#     return res
-
-# end
 
 function dynamics_residual(xₖ, xₖ₊₁, uk, λk, model, fpos, constraint, dt)
     qₖ, q̇ₖ = xₖ[1:7], xₖ[8:14]
@@ -248,158 +227,5 @@ function dynamics_residual(xₖ, xₖ₊₁, uk, λk, model, fpos, constraint, d
     res_pos = qₖ + q̇ₖ₊₁*dt - qₖ₊₁
     res_con = constraint(qₖ₊₁, model, fpos)
 
-    # return [res_dyn; res_pos]
     return [res_dyn; res_pos; res_con]
-    # return [res_dyn; res_con]
 end
-
-# function transition_dynamics_residual(xₖ, xₖ₊₁, uk, λk, model, fpos, constraint, dt)
-#     qₖ, q̇ₖ = xₖ[1:7], xₖ[8:14]
-#     qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
-
-#     M = M_matrix(qₖ, model)
-#     N = N_matrix(qₖ, q̇ₖ, model)
-#     B = B_matrix()
-#     J = J_matrix(qₖ, model, constraint, fpos)
-
-#     res_dyn = -M*(q̇ₖ₊₁ - q̇ₖ) + (B*uk - N - J'*λk)*dt
-#     res_pos = qₖ + q̇ₖ₊₁*dt - qₖ₊₁
-#     res_con = constraint(qₖ, model, fpos)
-
-#     # return [res_dyn; res_pos]
-#     # return [res_dyn; res_con]
-#     return [res_dyn; res_pos; res_con]
-# end
-
-# # could be a misnomer, might just rename to "kkt_rhs"
-# function kkt_conditions(q, q̇, u, model, h, constraint, fpos)
-#     # rigth hand side of the KKT system:
-#     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
-#     # [J(q)*h         0] [   λ] = [               -C(q)]
-
-#     M = M_matrix(q, model)
-#     N = N_matrix(q, q̇, model)
-#     B = B_matrix()
-
-#     kkt_conditions = [M*q̇ + h*B*u - h*N;
-#                       -constraint(q, model, fpos)]
-#     return kkt_conditions
-# end
-
-# function kkt_jacobian(q, model, constraint, fpos, h)
-#     # returns the left hand side of the KKT system:
-#     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
-#     # [J(q)*h         0] [   λ] = [               -C(q)]
-
-#     M = M_matrix(q, model)
-#     J = J_matrix(q, model, constraint, fpos)
-
-#     kkt_jac = [M   -J'*h;
-#                J*h zeros(size(J, 1), size(J, 1))]
-#     return kkt_jac
-# end
-
-# function kkt_rhs(x, xₖ₊₁, u, model, constraint, fpos, h)
-#     # rigth hand side of the KKT system:
-#     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
-#     # [J(q)*h         0] [   λ] = [               -C(q)]
-
-#     q, q̇ = x[1:7], x[8:14]
-#     qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
-
-#     M = M_matrix(qₖ₊₁, model)
-#     N = N_matrix(qₖ₊₁, q̇ₖ₊₁, model)
-#     B = B_matrix()
-
-#     kkt_rhs = [M*q̇ + h*B*u - h*N;
-#                -constraint(q, model, fpos)]
-#     return kkt_rhs
-# end
-
-# function kkt_lhs(x, xₖ₊₁, model, constraint, fpos, h)
-#     # returns the left hand side of the KKT system:
-#     # [  M(q)  -J(q)ᵀ*h] [q̇ₖ₊₁] = [M(q)*q̇ₖ + h*B*u - h*N]
-#     # [J(q)*h         0] [   λ] = [               -C(q)]
-
-#     q, q̇ = x[1:7], x[8:14]
-#     qₖ₊₁, q̇ₖ₊₁ = xₖ₊₁[1:7], xₖ₊₁[8:14]
-
-#     M = M_matrix(qₖ₊₁, model)
-#     Jc = J_matrix(qₖ₊₁, model, constraint, fpos)
-
-#     kkt_lhs = [M    -Jc'*h;
-#                Jc*h zeros(size(Jc, 1), size(Jc, 1))]
-#     return kkt_lhs
-# end
-
-# function constrained_discrete_dynamics(x, xₖ₊₁, u, model, fpos, constraint, h)
-#     # solve the KKT system for the newton step
-#     kkt_jac = kkt_lhs(x, xₖ₊₁, model, constraint, fpos, h)
-#     kkt_cond = kkt_rhs(x, xₖ₊₁, u, model, constraint, fpos, h)
-
-#     żₖ₊₁ = kkt_jac \ kkt_cond
-#     q̇ₖ₊₁ = żₖ₊₁[1:7]
-
-#     qₖ = x[1:7]
-#     qₖ₊₁ = qₖ + q̇ₖ₊₁*h
-#     res = [qₖ₊₁; q̇ₖ₊₁] - xₖ₊₁
-
-#     return res
-# end
-
-# function kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
-#     # solve the KKT system for the newton step
-#     kkt_jac = kkt_jacobian(q, model, constraint, fpos, h)
-#     kkt_cond = kkt_conditions(q, q̇, u, model, h, constraint, fpos)
-
-#     newton_step = kkt_jac \ kkt_cond
-#     return newton_step
-# end
-
-# function forward_dynamics(q, q̇, u, model, fpos, constraint, h, tol=1e-9, max_iter=100, verbose=true)
-#     # solve the KKT system for the newton step
-#     old_step = kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
-#     newton_step = old_step
-#     for i = 1:max_iter-1
-#         q̇ₖ₊₁ = newton_step[1:7]
-#         qₖ₊₁ = q + q̇ₖ₊₁*h
-
-#         newton_step = kkt_newton_step(q, q̇, u, model, fpos, constraint, h)
-#         # @show newton_step
-#         step_change = norm(newton_step - old_step)
-#         old_step = newton_step
-
-#         if verbose 
-#             print("iter: $i    |r|: $step_change   \n")
-#         end
-        
-#         # check convergence
-#         if norm(step_change) < tol
-#             λ = newton_step[8:end]
-#             return qₖ₊₁, q̇ₖ₊₁, λ
-#         end
-#     end
-#     error("Newton iteration did not converge")
-# end
-
-# function simulate(q, q̇, u, model, fpos, constraint, h, T)
-#     t = 0
-#     q_hist = zeros(T, 7)
-#     q̇_hist = zeros(T, 7)
-#     λ_hist = zeros(T, 2)
-
-#     q_hist[1, :] = q
-#     q̇_hist[1, :] = q̇
-
-#     for i = 2:T
-#         print("t: $t \n")
-#         t += h
-#         q, q̇, λ = forward_dynamics(q, q̇, u(t), model, fpos, constraint, h)
-#         q_hist[i, :] = q
-#         q̇_hist[i, :] = q̇
-#         λ_hist[i, :] = λ
-#     end
-
-#     return q_hist, q̇_hist, λ_hist
-# end
-
