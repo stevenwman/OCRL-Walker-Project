@@ -221,8 +221,8 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 # TODO: change this ↓ to maximize cg position along trajectory
 Q = diagm(fill(1,14))
 Qf = 1*Q
-R = diagm(fill(1e-3,4))
-
+# R = 1*diagm(fill(1e-3,4))
+R = 1000*diagm(fill(1e-3,4))
 
 # create indexing utilities 
 idx = create_idx(nx,nu,N)
@@ -286,4 +286,5 @@ display(plot(t_vec[1:end-1], Um',xlabel = "time (s)", ylabel = "U",
 
 ##
 
-save("results.jld2", "X", X, "U", U, "Xm", Xm, "Um", Um, "Z", Z, "params", params)
+# save("results.jld2", "X", X, "U", U, "Xm", Xm, "Um", Um, "Z", Z, "params", params)
+save("results_1000xR.jld2", "X", X, "U", U, "Xm", Xm, "Um", Um, "Z", Z, "params", params)

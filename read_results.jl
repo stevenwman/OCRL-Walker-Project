@@ -3,6 +3,9 @@
 
 # read the file and store the data in a variable called data
 data = JLD2.load("results.jld2")
+# data = JLD2.load("results_10xR.jld2")
+# data = JLD2.load("results_100xR.jld2")
+# data = JLD2.load("results_1000xR.jld2")
 
 # print the keys of the data
 # println(keys(data))
