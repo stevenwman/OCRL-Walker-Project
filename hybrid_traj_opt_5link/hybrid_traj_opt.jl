@@ -122,7 +122,7 @@ function walker_equality_constraint(params::NamedTuple, Z::Vector)::Vector
 
     [   
       Z[idx.x[1]] - xic;
-      Z[idx.x[N]] - xg;
+    #   Z[idx.x[N]] - xg;
       walker_dynamics_constraints(params, Z)
     ]
 end
@@ -222,7 +222,7 @@ Xref, Uref = reference_trajectory(model, xic, xg, dt, N, M1, tf)
 Q = diagm(fill(1,14))
 Qf = 1*Q
 # R = 1*diagm(fill(1e-3,4))
-R = 1000*diagm(fill(1e-3,4))
+R = 1*diagm(fill(1e-3,4))
 
 # create indexing utilities 
 idx = create_idx(nx,nu,N)
@@ -287,4 +287,5 @@ display(plot(t_vec[1:end-1], Um',xlabel = "time (s)", ylabel = "U",
 ##
 
 # save("results.jld2", "X", X, "U", U, "Xm", Xm, "Um", Um, "Z", Z, "params", params)
-save("results_1000xR.jld2", "X", X, "U", U, "Xm", Xm, "Um", Um, "Z", Z, "params", params)
+save("results-constraintless.jld2", "X", X, "U", U, "Xm", Xm, "Um", Um, "Z", Z, "params", params)
+# save("results_1000xR.jld2", "X", X, "U", U, "Xm", Xm, "Um", Um, "Z", Z, "params", params)
